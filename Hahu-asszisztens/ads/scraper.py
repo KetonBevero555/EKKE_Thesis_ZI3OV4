@@ -16,7 +16,7 @@ django.setup()
 
 from ads.models import DummyAd, Ad, ScrapeLog
 
-# --- SZÍNEK (Csak a sárgát használjuk most) ---
+# --- SZÍNEK ---
 class Colors:
     YELLOW = '\033[93m'
     RESET = '\033[0m'
@@ -59,9 +59,8 @@ def parse_tech_info(info_elements):
 
 # --- A FŐ SCRAPER ---
 def run_scraper():
-    print("--- SCRAPER INDÍTÁSA (MINIMAL LOG) ---")
+    print("--- SCRAPER INDÍTÁSA (STABILIZÁLT VERZIÓ) ---")
     
-    # 1. Start: Ideiglenes tábla ürítése
     print("Ideiglenes tábla (DummyAd) ürítése...")
     DummyAd.objects.all().delete()
 
@@ -78,7 +77,7 @@ def run_scraper():
         return
 
     success = False
-    total_saved = 0 # Összesen feldolgozott (új + update)
+    total_saved = 0 
 
     with sync_playwright() as p:
         try:
@@ -86,7 +85,7 @@ def run_scraper():
             context = browser.contexts[0]
             page = context.pages[0]
 
-            # --- AdBlock (Csak képek tiltása) ---
+            # --- AdBlock ---
             print("Képblokkoló aktiválása...")
             def route_intercept(route):
                 if route.request.resource_type in ["image", "media"]:
@@ -108,9 +107,10 @@ def run_scraper():
                 search_btn.click()
                 print("Várakozás a találati listára...")
                 try:
-                    page.wait_for_selector(".talalati-sor", timeout=30000)
+                    # Itt hagytam a nagy timeoutot az első betöltéshez
+                    page.wait_for_selector(".talalati-sor", timeout=45000)
                 except:
-                    print("Lassú betöltés...")
+                    print("Lassú első betöltés...")
                 sb.solve_captcha()
             else:
                 print("HIBA: Nincs keresés gomb, ugrás direkt linkre...")
@@ -120,17 +120,28 @@ def run_scraper():
             page_num = 1
             
             while True:
-                # fejléc
                 print(f"\n--- {page_num}. OLDAL FELDOLGOZÁSA ---")
                 
-                try:
-                    page.wait_for_selector(".talalati-sor", timeout=15000)
-                except:
-                    print("TIMEOUT vagy vége a listának.")
+                # --- ÚJ: RETRY LOGIKA ---
+                # Nem lépünk ki azonnal, ha timeout van, hanem próbálkozunk 3-szor
+                page_loaded = False
+                for attempt in range(1, 4): # 1, 2, 3 próbálkozás
+                    try:
+                        # ITT VOLT A HIBA: Felvittem 45 másodpercre a timeoutot!
+                        page.wait_for_selector(".talalati-sor", timeout=45000)
+                        page_loaded = True
+                        break # Ha sikerült, kilépünk a próbálkozós ciklusból
+                    except:
+                        print(f"⚠️  Lassú válasz... Újrapróbálkozás ({attempt}/3)...")
+                        time.sleep(3) # Kis pihenő
+                
+                if not page_loaded:
+                    print("❌ VÉGLEGES TIMEOUT. A Hahu nem válaszol 3 próba után sem.")
                     log.status = f"TIMEOUT_ON_PAGE_{page_num}"
                     log.save()
-                    break
+                    break # Itt adjuk fel végleg
 
+                # Innentől minden változatlan...
                 car_cards = page.query_selector_all(".talalati-sor")
                 count_on_page = len(car_cards)
                 print(f"[INFO] Találatok az oldalon: {count_on_page} db")
@@ -147,7 +158,6 @@ def run_scraper():
                         title = link_el.inner_text()
                         hahu_id = int(full_url.split('-')[-1])
 
-                        # Adatkinyerés (rövidítve a kód áttekinthetősége miatt)
                         parts = full_url.split('/')
                         brand = "Egyéb"; model = ""
                         if 'szemelyauto' in parts:
@@ -183,7 +193,6 @@ def run_scraper():
                         seller_el = card.query_selector(".trader-name")
                         seller = seller_el.inner_text().replace("Kereskedés: ", "") if seller_el else "Magánszemély"
 
-                        # Mentés
                         obj, created = DummyAd.objects.update_or_create(
                             hahu_id=hahu_id,
                             defaults={
@@ -203,11 +212,9 @@ def run_scraper():
                     except Exception:
                         continue
 
-                # --- STATISZTIKA KIÍRÁSA (A TE MINTÁD ALAPJÁN) ---
                 print(f"[SAVE] Mentett hirdetések: {new_on_page} db")
                 
                 if updated_on_page > 0:
-                    # Csak ez sárga
                     print(f"{Colors.YELLOW}[UPDATE] Frissített hirdetések: {updated_on_page} db{Colors.RESET}")
                 
                 print(f"[STATUS] Eddig mentve: {total_saved} autó.")
@@ -234,7 +241,6 @@ def run_scraper():
                     success = True
                     break
                 
-                # elválasztó
                 print("-----------------------------------")
 
         except Exception as e:
