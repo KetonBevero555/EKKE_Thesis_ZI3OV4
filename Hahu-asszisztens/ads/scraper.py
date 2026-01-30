@@ -21,12 +21,15 @@ class Colors:
     YELLOW = '\033[93m'
     RESET = '\033[0m'
 
-# --- OKOS ADATTISZTÍTÓK ---
+# --- SEGÉDFÜGGVÉNYEK (HELPEREK) ---
+
+# Ár tisztítása (csak számjegyek)
 def clean_price(text):
     if not text: return None
     clean_str = re.sub(r'[^\d]', '', text)
     return int(clean_str) if clean_str else None
 
+# Technikai adatok (évjárat, üzemanyag, stb.) kinyerése
 def parse_tech_info(info_elements):
     data = {'fuel': None, 'year': None, 'month': None, 'engine_cc': None, 'power_le': None, 'power_kw': None, 'mileage': None}
     
@@ -57,27 +60,148 @@ def parse_tech_info(info_elements):
             
     return data
 
-# --- A FŐ SCRAPER ---
+# --- FŐ LOGIKAI BLOKKOK ---
+
+# Böngésző profil és SeleniumBase indítása
+def setup_browser():
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    profile_dir = os.path.join(base_dir, "chrome_profile")
+    try:
+        sb = sb_cdp.Chrome(user_data_dir=profile_dir, incognito=False)
+        return sb, sb.get_endpoint_url()
+    except Exception as e:
+        print(f"Hiba a böngésző indításakor: {e}")
+        return None, None
+
+# AdBlock (Kép és Média tiltása) aktiválása az adott oldalon
+def activate_adblock(page):
+    print("Képblokkoló aktiválása...")
+    def route_intercept(route):
+        if route.request.resource_type in ["image", "media"]:
+            route.abort()
+        else:
+            route.continue_()
+    page.route("**/*", route_intercept)
+
+# Tartalom betöltése Retry (Újrapróbálkozás) logikával
+# Visszatér True-val ha sikerült, False-al ha végleges timeout
+def wait_for_content(page, selector=".talalati-sor", attempts=3, timeout=45000):
+    for attempt in range(1, attempts + 1):
+        try:
+            page.wait_for_selector(selector, timeout=timeout)
+            return True
+        except:
+            print(f"⚠️  Lassú válasz... Újrapróbálkozás ({attempt}/{attempts})...")
+            time.sleep(3)
+    return False
+
+# Egyetlen autó adatainak kinyerése a HTML kártyából
+def extract_car_data(card):
+    link_el = card.query_selector("h3 a")
+    if not link_el: return None
+    
+    full_url = link_el.get_attribute("href")
+    title = link_el.inner_text()
+    hahu_id = int(full_url.split('-')[-1])
+
+    # Márka & Modell parserek
+    parts = full_url.split('/')
+    brand = "Egyéb"; model = ""
+    if 'szemelyauto' in parts:
+        idx = parts.index('szemelyauto')
+        if len(parts) > idx + 2:
+            brand = parts[idx+1].capitalize()
+            model = parts[idx+2].capitalize().replace('_', ' ')
+    elif 'kishaszonjarmu' in parts:
+        idx = parts.index('kishaszonjarmu')
+        if len(parts) > idx + 2:
+            brand = parts[idx+1].capitalize()
+            model = parts[idx+2].capitalize().replace('_', ' ')
+
+    # Árak & Bérlés
+    price_primary = card.query_selector(".pricefield-primary")
+    price_secondary = card.query_selector(".pricefield-secondary-basic")
+    raw_p1 = price_primary.inner_text() if price_primary else ""
+    raw_p2 = price_secondary.inner_text() if price_secondary else ""
+    
+    is_rentable = "bérelhető" in raw_p1.lower() or "bérelhető" in raw_p2.lower()
+    p1 = clean_price(raw_p1); p2 = clean_price(raw_p2)
+    final_price = p1
+    sale_price = p2 if p2 else None
+
+    # Tech adatok
+    info_spans = card.query_selector_all(".talalatisor-info.adatok span.info")
+    if not info_spans: info_spans = card.query_selector_all(".talalatisor-info span.info")
+    tech = parse_tech_info([span.inner_text() for span in info_spans])
+
+    # Címkék
+    tag_spans = card.query_selector_all(".cimke-lista span.label")
+    unique_tags = sorted(list(set([t.inner_text() for t in tag_spans if t.inner_text().strip()])))
+    tags = "|".join(unique_tags)
+
+    # Leírás & Eladó
+    desc_el = card.query_selector(".talalati-sor__leiras")
+    description = desc_el.inner_text() if desc_el else ""
+    seller_el = card.query_selector(".trader-name")
+    seller = seller_el.inner_text().replace("Kereskedés: ", "") if seller_el else "Magánszemély"
+
+    return {
+        'hahu_id': hahu_id, 'url': full_url, 'title': title, 
+        'brand': brand, 'model': model,
+        'price': final_price, 'sale_price': sale_price, 'is_rentable': is_rentable,
+        'fuel': tech['fuel'], 'year': tech['year'], 'month': tech['month'],
+        'engine_cc': tech['engine_cc'], 'power_le': tech['power_le'], 
+        'power_kw': tech['power_kw'], 'mileage': tech['mileage'],
+        'tags': tags, 'description_snippet': description, 'seller': seller,
+        'no_price': True if not final_price else False
+    }
+
+# Adatbázis művelet: update_or_create
+def save_car_to_db(data):
+    obj, created = DummyAd.objects.update_or_create(
+        hahu_id=data['hahu_id'],
+        defaults=data # A data dictionary kulcsai megegyeznek a modell mezőivel (kivéve hahu_id)
+    )
+    return created
+
+# Végső fázis: Adatok átmásolása az éles táblába
+def finalize_migration(log, total_saved):
+    print("\n================================================")
+    if total_saved > 0:
+        print("✅ SIKERES FUTÁS! Adatok átmásolása az ÉLES táblába...")
+        try:
+            Ad.objects.all().delete()
+            dummy_data = DummyAd.objects.values().exclude(id__isnull=True)
+            new_ads = [Ad(**item) for item in dummy_data]
+            Ad.objects.bulk_create(new_ads)
+            
+            print(f"-> Átmásolva {len(new_ads)} autó az Ad táblába.")
+            DummyAd.objects.all().delete()
+            
+            log.status = "SIKERES (MÁSOLVA)"
+            log.actual_scraped = total_saved
+            log.save()
+            print("MINDEN KÉSZ!")
+        except Exception as e:
+            print(f"Hiba a másolásnál: {e}")
+    else:
+        print("❌ HIBA VAGY ÜRES LISTA! Nem nyúlok az éles adatokhoz.")
+        DummyAd.objects.all().delete()
+        log.save()
+
+# --- A FŐVEZÉRLŐ (ORCHESTRATOR) ---
 def run_scraper():
-    print("--- SCRAPER INDÍTÁSA (STABILIZÁLT VERZIÓ) ---")
+    print("--- SCRAPER INDÍTÁSA (REFAKTORÁLT, MODULÁRIS) ---")
     
     print("Ideiglenes tábla (DummyAd) ürítése...")
     DummyAd.objects.all().delete()
-
     log = ScrapeLog.objects.create(expected_cars=0, status="FUT")
-    
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    profile_dir = os.path.join(base_dir, "chrome_profile")
-    
-    try:
-        sb = sb_cdp.Chrome(user_data_dir=profile_dir, incognito=False)
-        endpoint_url = sb.get_endpoint_url()
-    except Exception as e:
-        print(f"Hiba a böngésző indításakor: {e}")
-        return
+
+    sb, endpoint_url = setup_browser()
+    if not sb: return
 
     success = False
-    total_saved = 0 
+    total_saved = 0
 
     with sync_playwright() as p:
         try:
@@ -85,15 +209,9 @@ def run_scraper():
             context = browser.contexts[0]
             page = context.pages[0]
 
-            # --- AdBlock ---
-            print("Képblokkoló aktiválása...")
-            def route_intercept(route):
-                if route.request.resource_type in ["image", "media"]:
-                    route.abort()
-                else:
-                    route.continue_()
-            page.route("**/*", route_intercept)
+            activate_adblock(page)
 
+            # Kezdő navigáció
             print("Főoldal nyitása...")
             page.goto("https://www.hasznaltauto.hu/")
             try: page.wait_for_load_state("domcontentloaded")
@@ -106,11 +224,8 @@ def run_scraper():
             if search_btn:
                 search_btn.click()
                 print("Várakozás a találati listára...")
-                try:
-                    # Itt hagytam a nagy timeoutot az első betöltéshez
-                    page.wait_for_selector(".talalati-sor", timeout=45000)
-                except:
-                    print("Lassú első betöltés...")
+                if not wait_for_content(page, timeout=45000):
+                    print("HIBA: Nem töltött be az első oldal.")
                 sb.solve_captcha()
             else:
                 print("HIBA: Nincs keresés gomb, ugrás direkt linkre...")
@@ -118,30 +233,17 @@ def run_scraper():
 
             # --- LAPOZÓ CIKLUS ---
             page_num = 1
-            
             while True:
                 print(f"\n--- {page_num}. OLDAL FELDOLGOZÁSA ---")
                 
-                # --- ÚJ: RETRY LOGIKA ---
-                # Nem lépünk ki azonnal, ha timeout van, hanem próbálkozunk 3-szor
-                page_loaded = False
-                for attempt in range(1, 4): # 1, 2, 3 próbálkozás
-                    try:
-                        # ITT VOLT A HIBA: Felvittem 45 másodpercre a timeoutot!
-                        page.wait_for_selector(".talalati-sor", timeout=45000)
-                        page_loaded = True
-                        break # Ha sikerült, kilépünk a próbálkozós ciklusból
-                    except:
-                        print(f"⚠️  Lassú válasz... Újrapróbálkozás ({attempt}/3)...")
-                        time.sleep(3) # Kis pihenő
-                
-                if not page_loaded:
+                # 1. Tartalom ellenőrzése (Retry logikával)
+                if not wait_for_content(page):
                     print("❌ VÉGLEGES TIMEOUT. A Hahu nem válaszol 3 próba után sem.")
                     log.status = f"TIMEOUT_ON_PAGE_{page_num}"
                     log.save()
-                    break # Itt adjuk fel végleg
+                    break
 
-                # Innentől minden változatlan...
+                # 2. Autók kinyerése az aktuális oldalról
                 car_cards = page.query_selector_all(".talalati-sor")
                 count_on_page = len(car_cards)
                 print(f"[INFO] Találatok az oldalon: {count_on_page} db")
@@ -151,95 +253,39 @@ def run_scraper():
                 
                 for card in car_cards:
                     try:
-                        link_el = card.query_selector("h3 a")
-                        if not link_el: continue
+                        car_data = extract_car_data(card)
+                        if not car_data: continue
+
+                        is_new = save_car_to_db(car_data)
                         
-                        full_url = link_el.get_attribute("href")
-                        title = link_el.inner_text()
-                        hahu_id = int(full_url.split('-')[-1])
-
-                        parts = full_url.split('/')
-                        brand = "Egyéb"; model = ""
-                        if 'szemelyauto' in parts:
-                            idx = parts.index('szemelyauto')
-                            if len(parts) > idx + 2:
-                                brand = parts[idx+1].capitalize()
-                                model = parts[idx+2].capitalize().replace('_', ' ')
-                        elif 'kishaszonjarmu' in parts:
-                             idx = parts.index('kishaszonjarmu')
-                             if len(parts) > idx + 2:
-                                brand = parts[idx+1].capitalize()
-                                model = parts[idx+2].capitalize().replace('_', ' ')
-
-                        price_primary = card.query_selector(".pricefield-primary")
-                        price_secondary = card.query_selector(".pricefield-secondary-basic")
-                        raw_p1 = price_primary.inner_text() if price_primary else ""
-                        raw_p2 = price_secondary.inner_text() if price_secondary else ""
-                        is_rentable = "bérelhető" in raw_p1.lower() or "bérelhető" in raw_p2.lower()
-                        p1 = clean_price(raw_p1); p2 = clean_price(raw_p2)
-                        final_price = p1
-                        sale_price = p2 if p2 else None
-
-                        info_spans = card.query_selector_all(".talalatisor-info.adatok span.info")
-                        if not info_spans: info_spans = card.query_selector_all(".talalatisor-info span.info")
-                        tech = parse_tech_info([span.inner_text() for span in info_spans])
-
-                        tag_spans = card.query_selector_all(".cimke-lista span.label")
-                        unique_tags = sorted(list(set([t.inner_text() for t in tag_spans if t.inner_text().strip()])))
-                        tags = "|".join(unique_tags)
-
-                        desc_el = card.query_selector(".talalati-sor__leiras")
-                        description = desc_el.inner_text() if desc_el else ""
-                        seller_el = card.query_selector(".trader-name")
-                        seller = seller_el.inner_text().replace("Kereskedés: ", "") if seller_el else "Magánszemély"
-
-                        obj, created = DummyAd.objects.update_or_create(
-                            hahu_id=hahu_id,
-                            defaults={
-                                'url': full_url, 'title': title, 'brand': brand, 'model': model,
-                                'price': final_price, 'sale_price': sale_price, 'is_rentable': is_rentable,
-                                'fuel': tech['fuel'], 'year': tech['year'], 'month': tech['month'],
-                                'engine_cc': tech['engine_cc'], 'power_le': tech['power_le'], 'power_kw': tech['power_kw'],
-                                'mileage': tech['mileage'], 'tags': tags, 'description_snippet': description,
-                                'seller': seller, 'no_price': True if not final_price else False
-                            }
-                        )
-                        
-                        if created: new_on_page += 1
+                        if is_new: new_on_page += 1
                         else: updated_on_page += 1
                         total_saved += 1
                         
                     except Exception:
                         continue
 
+                # 3. Statisztika
                 print(f"[SAVE] Mentett hirdetések: {new_on_page} db")
-                
                 if updated_on_page > 0:
                     print(f"{Colors.YELLOW}[UPDATE] Frissített hirdetések: {updated_on_page} db{Colors.RESET}")
-                
                 print(f"[STATUS] Eddig mentve: {total_saved} autó.")
 
-                # Lapozás
+                # 4. Lapozás
                 next_li = page.query_selector("li.next")
-                if next_li:
-                    if "disabled" in (next_li.get_attribute("class") or ""):
-                        print("Elértük az utolsó oldalt.")
-                        success = True 
-                        break
+                if next_li and "disabled" not in (next_li.get_attribute("class") or ""):
+                    next_link = next_li.query_selector("a")
+                    if next_link:
+                        print(f"Lapozás a következő oldalra ({page_num + 1})...")
+                        next_link.click()
+                        page_num += 1
+                        time.sleep(2) 
+                        sb.solve_captcha()
                     else:
-                        next_link = next_li.query_selector("a")
-                        if next_link:
-                            print(f"Lapozás a következő oldalra ({page_num + 1})...")
-                            next_link.click()
-                            page_num += 1
-                            time.sleep(2) 
-                            sb.solve_captcha()
-                        else:
-                            success = True
-                            break
+                        success = True; break
                 else:
-                    success = True
-                    break
+                    print("Elértük az utolsó oldalt.")
+                    success = True; break
                 
                 print("-----------------------------------")
 
@@ -252,26 +298,11 @@ def run_scraper():
             try: browser.close()
             except: pass
 
-    # --- MÁSOLÁS ---
-    print("\n================================================")
-    if success and total_saved > 0:
-        print("✅ SIKERES FUTÁS! Adatok átmásolása az ÉLES táblába...")
-        try:
-            Ad.objects.all().delete()
-            dummy_data = DummyAd.objects.values().exclude(id__isnull=True)
-            new_ads = [Ad(**item) for item in dummy_data]
-            Ad.objects.bulk_create(new_ads)
-            print(f"-> Átmásolva {len(new_ads)} autó az Ad táblába.")
-            DummyAd.objects.all().delete()
-            log.status = "SIKERES (MÁSOLVA)"
-            log.actual_scraped = total_saved
-            log.save()
-            print("MINDEN KÉSZ!")
-        except Exception as e:
-            print(f"Hiba a másolásnál: {e}")
+    # Migráció indítása
+    if success:
+        finalize_migration(log, total_saved)
     else:
-        print("❌ HIBA VAGY ÜRES LISTA! Nem nyúlok az éles adatokhoz.")
-        DummyAd.objects.all().delete()
+        print("❌ HIBA VAGY MEGSZAKADT FUTÁS! Nem nyúlok az éles adatokhoz.")
         log.save()
 
 if __name__ == "__main__":
