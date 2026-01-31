@@ -6,7 +6,9 @@ import time
 from playwright.sync_api import sync_playwright
 from seleniumbase import sb_cdp
 
-# --- KONFIGURÁCIÓ ---
+from ads.models import DummyAd, Ad, ScrapeLog
+
+# Django konfiguráció
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
 # Django setup
@@ -14,48 +16,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hahu_backend.settings')
 django.setup()
 
-from ads.models import DummyAd, Ad, ScrapeLog
-
-# --- SZÍNEK ---
+# Színek konzol kimenethez
 class Colors:
     YELLOW = '\033[93m'
     RESET = '\033[0m'
-
-# --- SEGÉDFÜGGVÉNYEK ---
-
-# Profil mappa elérési útjának lekérése
-def get_profile_dir() -> str:
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(base_dir, "chrome_profile")
-
-# Inicializáló beállítások elvégzése, ha nincs profil
-def perform_initial_setup(profile_dir: str) -> bool:
-    print(f"\n{Colors.YELLOW}⚠️  NEM TALÁLHATÓ CHROME PROFIL! INDÍTOM A BEÁLLÍTÁST...{Colors.RESET}")
-    print("1. A böngésző megnyílik.")
-    print("2. A Captcha-t megoldom helyetted.")
-    print(f"3. A SÜTIKET FOGADD EL KÉZZEL!{Colors.RESET}")
-    print("4. Ha megjelent a kereső, a program automatikusan bezárul és indul a munka.")
-    
-    time.sleep(3) 
-    try:
-        sb = sb_cdp.Chrome(user_data_dir=profile_dir, incognito=False)
-        sb.open("https://www.hasznaltauto.hu/")
-        
-        print("Captcha ellenőrzése...")
-        sb.solve_captcha()
-        
-        print(f"\n{Colors.YELLOW}>>> KÉRLEK FOGADD EL A SÜTIKET MOST! <<<{Colors.RESET}")
-        print("Várakozás, amíg elfogadod és betölt az oldal (Keresés gomb)...")
-        for i in range(60):
-            time.sleep(1)
-            if i % 5 == 0: print(f"Várakozás... ({i}s)")
-
-        print(f"✅ Beállítás kész (vagy időtúllépés). Indulás!{Colors.RESET}")
-        return True
-
-    except Exception as e:
-        print(f"Hiba a beállítás közben: {e}{Colors.RESET}")
-        return False
 
 # Ár tisztítása
 def clean_price(text: str) -> int | None:
@@ -95,16 +59,9 @@ def parse_tech_info(info_elements: list[str]) -> dict:
     return data
 
 # Böngésző profil és SeleniumBase indítása
-def setup_browser() -> tuple[sb_cdp.Chrome | None, str | None]:
-    profile_dir = get_profile_dir()
-    if not os.path.exists(profile_dir) or not os.listdir(profile_dir):
-        success = perform_initial_setup(profile_dir)
-        if not success:
-            print("A beállítás sikertelen volt. Kilépés.")
-            return None, None
-        time.sleep(2)
-
-    print(f"{Colors.GREEN}Meglévő profil betöltése: {profile_dir}{Colors.RESET}")
+def setup_browser() -> tuple:
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    profile_dir = os.path.join(base_dir, "chrome_profile")
     try:
         sb = sb_cdp.Chrome(user_data_dir=profile_dir, incognito=False)
         return sb, sb.get_endpoint_url()
@@ -195,7 +152,7 @@ def extract_car_data(card: any) -> dict | None:
         'no_price': True if not final_price else False
     }
 
-# Adatbázis művelet: update_or_create
+# Adatbázis művelet
 def save_car_to_db(data: dict) -> bool:
     obj, created = DummyAd.objects.update_or_create(
         hahu_id=data['hahu_id'],
@@ -203,7 +160,7 @@ def save_car_to_db(data: dict) -> bool:
     )
     return created
 
-# Végső fázis: Adatok átmásolása az éles táblába
+# Adatok átmásolása az Ad táblába
 def finalize_migration(log: ScrapeLog, total_saved: int) -> None:
     print("\n================================================")
     if total_saved > 80000:
@@ -224,18 +181,17 @@ def finalize_migration(log: ScrapeLog, total_saved: int) -> None:
         except Exception as e:
             print(f"Hiba a másolásnál: {e}")
     else:
-        print("❌ HIBA, ÜRES VAGY NEM ELÉG HIRDETÉS! Nem nyúlok az éles adatokhoz.")
+        print("❌ HIBA VAGY ÜRES LISTA! Nem nyúlok az éles adatokhoz.")
         DummyAd.objects.all().delete()
         log.save()
 
-# Scraper fő függvénye
+# Fő futtató függvény
 def run_scraper() -> None:
     print("--- SCRAPER INDÍTÁSA ---")
-    
     print("Ideiglenes tábla (DummyAd) ürítése...")
+
     DummyAd.objects.all().delete()
     log = ScrapeLog.objects.create(expected_cars=0, status="FUT")
-
     sb, endpoint_url = setup_browser()
     if not sb: return
 
@@ -270,7 +226,7 @@ def run_scraper() -> None:
                 print("HIBA: Nincs keresés gomb, ugrás direkt linkre...")
                 page.goto("https://www.hasznaltauto.hu/talalatilista/")
 
-            # --- LAPOZÓ CIKLUS ---
+            # Oldalak feldolgozása
             page_num = 1
             while True:
                 print(f"\n--- {page_num}. OLDAL FELDOLGOZÁSA ---")
