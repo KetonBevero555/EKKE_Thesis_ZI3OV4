@@ -21,16 +21,50 @@ class Colors:
     YELLOW = '\033[93m'
     RESET = '\033[0m'
 
-# --- SEGÉDFÜGGVÉNYEK (HELPEREK) ---
+# --- SEGÉDFÜGGVÉNYEK ---
 
-# Ár tisztítása (csak számjegyek)
-def clean_price(text):
+# Profil mappa elérési útjának lekérése
+def get_profile_dir() -> str:
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base_dir, "chrome_profile")
+
+# Inicializáló beállítások elvégzése, ha nincs profil
+def perform_initial_setup(profile_dir: str) -> bool:
+    print(f"\n{Colors.YELLOW}⚠️  NEM TALÁLHATÓ CHROME PROFIL! INDÍTOM A BEÁLLÍTÁST...{Colors.RESET}")
+    print("1. A böngésző megnyílik.")
+    print("2. A Captcha-t megoldom helyetted.")
+    print(f"3. A SÜTIKET FOGADD EL KÉZZEL!{Colors.RESET}")
+    print("4. Ha megjelent a kereső, a program automatikusan bezárul és indul a munka.")
+    
+    time.sleep(3) 
+    try:
+        sb = sb_cdp.Chrome(user_data_dir=profile_dir, incognito=False)
+        sb.open("https://www.hasznaltauto.hu/")
+        
+        print("Captcha ellenőrzése...")
+        sb.solve_captcha()
+        
+        print(f"\n{Colors.YELLOW}>>> KÉRLEK FOGADD EL A SÜTIKET MOST! <<<{Colors.RESET}")
+        print("Várakozás, amíg elfogadod és betölt az oldal (Keresés gomb)...")
+        for i in range(60):
+            time.sleep(1)
+            if i % 5 == 0: print(f"Várakozás... ({i}s)")
+
+        print(f"✅ Beállítás kész (vagy időtúllépés). Indulás!{Colors.RESET}")
+        return True
+
+    except Exception as e:
+        print(f"Hiba a beállítás közben: {e}{Colors.RESET}")
+        return False
+
+# Ár tisztítása
+def clean_price(text: str) -> int | None:
     if not text: return None
     clean_str = re.sub(r'[^\d]', '', text)
     return int(clean_str) if clean_str else None
 
 # Technikai adatok (évjárat, üzemanyag, stb.) kinyerése
-def parse_tech_info(info_elements):
+def parse_tech_info(info_elements: list[str]) -> dict:
     data = {'fuel': None, 'year': None, 'month': None, 'engine_cc': None, 'power_le': None, 'power_kw': None, 'mileage': None}
     
     for item in info_elements:
@@ -60,12 +94,17 @@ def parse_tech_info(info_elements):
             
     return data
 
-# --- FŐ LOGIKAI BLOKKOK ---
-
 # Böngésző profil és SeleniumBase indítása
-def setup_browser():
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    profile_dir = os.path.join(base_dir, "chrome_profile")
+def setup_browser() -> tuple[sb_cdp.Chrome | None, str | None]:
+    profile_dir = get_profile_dir()
+    if not os.path.exists(profile_dir) or not os.listdir(profile_dir):
+        success = perform_initial_setup(profile_dir)
+        if not success:
+            print("A beállítás sikertelen volt. Kilépés.")
+            return None, None
+        time.sleep(2)
+
+    print(f"{Colors.GREEN}Meglévő profil betöltése: {profile_dir}{Colors.RESET}")
     try:
         sb = sb_cdp.Chrome(user_data_dir=profile_dir, incognito=False)
         return sb, sb.get_endpoint_url()
@@ -74,7 +113,7 @@ def setup_browser():
         return None, None
 
 # AdBlock (Kép és Média tiltása) aktiválása az adott oldalon
-def activate_adblock(page):
+def activate_adblock(page: any) -> None:
     print("Képblokkoló aktiválása...")
     def route_intercept(route):
         if route.request.resource_type in ["image", "media"]:
@@ -85,7 +124,7 @@ def activate_adblock(page):
 
 # Tartalom betöltése Retry (Újrapróbálkozás) logikával
 # Visszatér True-val ha sikerült, False-al ha végleges timeout
-def wait_for_content(page, selector=".talalati-sor", attempts=3, timeout=45000):
+def wait_for_content(page: any, selector=".talalati-sor", attempts=3, timeout=45000) -> bool:
     for attempt in range(1, attempts + 1):
         try:
             page.wait_for_selector(selector, timeout=timeout)
@@ -96,7 +135,7 @@ def wait_for_content(page, selector=".talalati-sor", attempts=3, timeout=45000):
     return False
 
 # Egyetlen autó adatainak kinyerése a HTML kártyából
-def extract_car_data(card):
+def extract_car_data(card: any) -> dict | None:
     link_el = card.query_selector("h3 a")
     if not link_el: return None
     
@@ -157,17 +196,17 @@ def extract_car_data(card):
     }
 
 # Adatbázis művelet: update_or_create
-def save_car_to_db(data):
+def save_car_to_db(data: dict) -> bool:
     obj, created = DummyAd.objects.update_or_create(
         hahu_id=data['hahu_id'],
-        defaults=data # A data dictionary kulcsai megegyeznek a modell mezőivel (kivéve hahu_id)
+        defaults=data
     )
     return created
 
 # Végső fázis: Adatok átmásolása az éles táblába
-def finalize_migration(log, total_saved):
+def finalize_migration(log: ScrapeLog, total_saved: int) -> None:
     print("\n================================================")
-    if total_saved > 0:
+    if total_saved > 80000:
         print("✅ SIKERES FUTÁS! Adatok átmásolása az ÉLES táblába...")
         try:
             Ad.objects.all().delete()
@@ -185,13 +224,13 @@ def finalize_migration(log, total_saved):
         except Exception as e:
             print(f"Hiba a másolásnál: {e}")
     else:
-        print("❌ HIBA VAGY ÜRES LISTA! Nem nyúlok az éles adatokhoz.")
+        print("❌ HIBA, ÜRES VAGY NEM ELÉG HIRDETÉS! Nem nyúlok az éles adatokhoz.")
         DummyAd.objects.all().delete()
         log.save()
 
-# --- A FŐVEZÉRLŐ (ORCHESTRATOR) ---
-def run_scraper():
-    print("--- SCRAPER INDÍTÁSA (REFAKTORÁLT, MODULÁRIS) ---")
+# Scraper fő függvénye
+def run_scraper() -> None:
+    print("--- SCRAPER INDÍTÁSA ---")
     
     print("Ideiglenes tábla (DummyAd) ürítése...")
     DummyAd.objects.all().delete()
@@ -236,14 +275,14 @@ def run_scraper():
             while True:
                 print(f"\n--- {page_num}. OLDAL FELDOLGOZÁSA ---")
                 
-                # 1. Tartalom ellenőrzése (Retry logikával)
+                # Tartalom ellenőrzése
                 if not wait_for_content(page):
                     print("❌ VÉGLEGES TIMEOUT. A Hahu nem válaszol 3 próba után sem.")
                     log.status = f"TIMEOUT_ON_PAGE_{page_num}"
                     log.save()
                     break
 
-                # 2. Autók kinyerése az aktuális oldalról
+                # Autók kinyerése az aktuális oldalról
                 car_cards = page.query_selector_all(".talalati-sor")
                 count_on_page = len(car_cards)
                 print(f"[INFO] Találatok az oldalon: {count_on_page} db")
@@ -265,13 +304,13 @@ def run_scraper():
                     except Exception:
                         continue
 
-                # 3. Statisztika
+                # Statisztika
                 print(f"[SAVE] Mentett hirdetések: {new_on_page} db")
                 if updated_on_page > 0:
                     print(f"{Colors.YELLOW}[UPDATE] Frissített hirdetések: {updated_on_page} db{Colors.RESET}")
                 print(f"[STATUS] Eddig mentve: {total_saved} autó.")
 
-                # 4. Lapozás
+                # Lapozás
                 next_li = page.query_selector("li.next")
                 if next_li and "disabled" not in (next_li.get_attribute("class") or ""):
                     next_link = next_li.query_selector("a")
