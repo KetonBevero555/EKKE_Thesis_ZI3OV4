@@ -6,8 +6,6 @@ import time
 from playwright.sync_api import sync_playwright
 from seleniumbase import sb_cdp
 
-from ads.models import DummyAd, Ad, ScrapeLog
-
 # Django konfiguráció
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 
@@ -15,6 +13,8 @@ os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hahu_backend.settings')
 django.setup()
+
+from ads.models import DummyAd, Ad, ScrapeLog
 
 # Színek konzol kimenethez
 class Colors:
@@ -302,3 +302,4 @@ def run_scraper() -> None:
 
 if __name__ == "__main__":
     run_scraper()
+ 
