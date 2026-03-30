@@ -7,4 +7,4 @@
 - AI alapú modern webalkalmazás fejlesztése
 
 ## Szakdolgozat célja
-A használtautó.hu-n való keresés megkönnyítése AI integrációjával.
+Autó árbecslő, használautók.hu adatai alapján betanított AI segítségével.

@@ -5,3 +5,4 @@ db.sqlite3
 chrome_profile/
 **/chrome_profile/
 **/ai/models/
+**/downloaded_files/

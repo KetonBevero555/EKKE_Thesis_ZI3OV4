@@ -66,12 +66,12 @@ def setup_browser() -> tuple:
         sb = sb_cdp.Chrome(user_data_dir=profile_dir, incognito=False)
         return sb, sb.get_endpoint_url()
     except Exception as e:
-        print(f"Hiba a böngésző indításakor: {e}")
+        print(f"Error starting browser: {e}")
         return None, None
 
 # AdBlock (Kép és Média tiltása) aktiválása az adott oldalon
 def activate_adblock(page: any) -> None:
-    print("Képblokkoló aktiválása...")
+    print("Blocking images and media...")
     def route_intercept(route):
         if route.request.resource_type in ["image", "media"]:
             route.abort()
@@ -86,9 +86,10 @@ def wait_for_content(page: any, selector=".talalati-sor", attempts=3, timeout=45
         try:
             page.wait_for_selector(selector, timeout=timeout)
             return True
-        except:
-            print(f"⚠️  Lassú válasz... Újrapróbálkozás ({attempt}/{attempts})...")
-            time.sleep(3)
+        except Exception as e:
+            print(f"TIMEOUT! Reloading the page... Attempt ({attempt}/{attempts})")
+            page.reload()
+            time.sleep(2)
     return False
 
 # Egyetlen autó adatainak kinyerése a HTML kártyából
@@ -102,17 +103,11 @@ def extract_car_data(card: any) -> dict | None:
 
     # Márka & Modell parserek
     parts = full_url.split('/')
-    brand = "Egyéb"; model = ""
-    if 'szemelyauto' in parts:
-        idx = parts.index('szemelyauto')
-        if len(parts) > idx + 2:
-            brand = parts[idx+1].capitalize()
-            model = parts[idx+2].capitalize().replace('_', ' ')
-    elif 'kishaszonjarmu' in parts:
-        idx = parts.index('kishaszonjarmu')
-        if len(parts) > idx + 2:
-            brand = parts[idx+1].capitalize()
-            model = parts[idx+2].capitalize().replace('_', ' ')
+    brand = ""; model = ""
+    idx = parts.index('szemelyauto')
+    if len(parts) > idx + 2:
+        brand = parts[idx+1].capitalize()
+        model = parts[idx+2].capitalize().replace('_', ' ')
 
     # Árak & Bérlés
     price_primary = card.query_selector(".pricefield-primary")
@@ -164,34 +159,34 @@ def save_car_to_db(data: dict) -> bool:
 def finalize_migration(log: ScrapeLog, total_saved: int) -> None:
     print("\n================================================")
     if total_saved > 80000:
-        print("✅ SIKERES FUTÁS! Adatok átmásolása az ÉLES táblába...")
+        print("SCRAPER FINISHED!")
         try:
             Ad.objects.all().delete()
             dummy_data = DummyAd.objects.values().exclude(id__isnull=True)
             new_ads = [Ad(**item) for item in dummy_data]
             Ad.objects.bulk_create(new_ads)
             
-            print(f"-> Átmásolva {len(new_ads)} autó az Ad táblába.")
+            print(f"-> Copied {len(new_ads)} cars to the Ad table.")
             DummyAd.objects.all().delete()
             
-            log.status = "SIKERES (MÁSOLVA)"
+            log.status = "SUCCESS"
             log.actual_scraped = total_saved
             log.save()
-            print("MINDEN KÉSZ!")
+            print("Log saved with SUCCESS status.")
         except Exception as e:
-            print(f"Hiba a másolásnál: {e}")
+            print(f"Error occurred while saving log: {e}")
     else:
-        print("❌ HIBA VAGY ÜRES LISTA! Nem nyúlok az éles adatokhoz.")
+        print("Error occurred, no data to save.")
         DummyAd.objects.all().delete()
         log.save()
 
 # Fő futtató függvény
 def run_scraper() -> None:
-    print("--- SCRAPER INDÍTÁSA ---")
-    print("Ideiglenes tábla (DummyAd) ürítése...")
+    print("--- SCRAPER STARTED ---")
+    print("Deleting old dummy data...")
 
     DummyAd.objects.all().delete()
-    log = ScrapeLog.objects.create(expected_cars=0, status="FUT")
+    log = ScrapeLog.objects.create(expected_cars=0, status="SCRAPER_STARTED")
     sb, endpoint_url = setup_browser()
     if not sb: return
 
@@ -207,33 +202,31 @@ def run_scraper() -> None:
             activate_adblock(page)
 
             # Kezdő navigáció
-            print("Főoldal nyitása...")
+            print("Page loading...")
             page.goto("https://www.hasznaltauto.hu/")
             try: page.wait_for_load_state("domcontentloaded")
             except: pass
-            time.sleep(2)
             sb.solve_captcha()
-
-            print("Keresés indítása...")
             search_btn = page.query_selector('[data-testid="submit-button"]')
+
             if search_btn:
                 search_btn.click()
-                print("Várakozás a találati listára...")
+                print("Loading search results...")
                 if not wait_for_content(page, timeout=45000):
-                    print("HIBA: Nem töltött be az első oldal.")
+                    print("ERROR: Page not loaded...")
                 sb.solve_captcha()
             else:
-                print("HIBA: Nincs keresés gomb, ugrás direkt linkre...")
+                print("ERROR: Button not found, jumping to results page...")
                 page.goto("https://www.hasznaltauto.hu/talalatilista/")
 
             # Oldalak feldolgozása
             page_num = 1
             while True:
-                print(f"\n--- {page_num}. OLDAL FELDOLGOZÁSA ---")
+                print(f"\n--- {page_num}. PAGE ---")
                 
                 # Tartalom ellenőrzése
                 if not wait_for_content(page):
-                    print("❌ VÉGLEGES TIMEOUT. A Hahu nem válaszol 3 próba után sem.")
+                    print("FINAL TIMEOUT! Scraper stopped on this page.")
                     log.status = f"TIMEOUT_ON_PAGE_{page_num}"
                     log.save()
                     break
@@ -241,7 +234,7 @@ def run_scraper() -> None:
                 # Autók kinyerése az aktuális oldalról
                 car_cards = page.query_selector_all(".talalati-sor")
                 count_on_page = len(car_cards)
-                print(f"[INFO] Találatok az oldalon: {count_on_page} db")
+                print(f"[INFO] Ads on page: {count_on_page}")
                 
                 new_on_page = 0
                 updated_on_page = 0
@@ -261,35 +254,32 @@ def run_scraper() -> None:
                         continue
 
                 # Statisztika
-                print(f"[SAVE] Mentett hirdetések: {new_on_page} db")
+                print(f"[SAVE] Ads saved: {new_on_page}")
                 if updated_on_page > 0:
-                    print(f"{Colors.YELLOW}[UPDATE] Frissített hirdetések: {updated_on_page} db{Colors.RESET}")
-                print(f"[STATUS] Eddig mentve: {total_saved} autó.")
+                    print(f"{Colors.YELLOW}[UPDATE] Updated ads: {updated_on_page} {Colors.RESET}")
+                print(f"[STATUS] Total saved: {total_saved} cars.")
 
                 # Lapozás
                 next_li = page.query_selector("li.next")
                 if next_li and "disabled" not in (next_li.get_attribute("class") or ""):
                     next_link = next_li.query_selector("a")
                     if next_link:
-                        print(f"Lapozás a következő oldalra ({page_num + 1})...")
+                        print(f"Go to page ({page_num + 1})...")
                         next_link.click()
                         page_num += 1
-                        time.sleep(2) 
                         sb.solve_captcha()
                     else:
                         success = True; break
                 else:
-                    print("Elértük az utolsó oldalt.")
+                    print("Last page reached.")
                     success = True; break
-                
-                print("-----------------------------------")
 
         except Exception as e:
-            print(f"KRITIKUS HIBA: {e}")
+            print(f"Error occurred: {e}")
             log.status = f"CRITICAL_ERROR: {str(e)}"
             success = False
         finally:
-            print("Böngésző bezárása...")
+            print("Closing browser...")
             try: browser.close()
             except: pass
 
@@ -297,7 +287,7 @@ def run_scraper() -> None:
     if success:
         finalize_migration(log, total_saved)
     else:
-        print("❌ HIBA VAGY MEGSZAKADT FUTÁS! Nem nyúlok az éles adatokhoz.")
+        print("Error or interrupted execution! No data saved.")
         log.save()
 
 if __name__ == "__main__":
