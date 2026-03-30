@@ -57,3 +57,16 @@ class ScrapeLog(models.Model):
 
     class Meta:
         db_table = 'scrape_logs'
+
+class AILog(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+    mae = models.IntegerField()
+    r2_score = models.FloatField()
+
+    class Meta:
+        db_table = 'ai_logs'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"MI Tanítás ({self.created_at.strftime('%Y.%m.%d')}) - Pontosság: {self.r2_score * 100:.0f}% - Átlagos hiba: {self.mae:,.0f} Ft"
+    
