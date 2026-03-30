@@ -14,7 +14,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hahu_backend.settings')
 django.setup()
 
-from ads.models import Ad
+from ads.models import Ad, AILog
 
 def train_model():
     print("Loading data from database...")
@@ -23,7 +23,7 @@ def train_model():
         year__isnull=False,
         mileage__isnull=False,
         power_le__isnull=False
-    ).values('price', 'brand', 'year', 'fuel', 'engine_cc', 'power_le', 'mileage')
+    ).values('price', 'brand', 'model', 'year', 'fuel', 'engine_cc', 'power_le', 'mileage')
 
     df = pd.DataFrame.from_records(qs)
     print(f"Loaded number of cars: {len(df)} db")
@@ -33,7 +33,8 @@ def train_model():
     df['engine_cc'] = df['engine_cc'].fillna(df['engine_cc'].median())
     X = df.drop('price', axis=1)
     y = df['price']
-    categorical_features = ['brand', 'fuel']
+    
+    categorical_features = ['brand', 'model', 'fuel']
     numeric_features = ['year', 'engine_cc', 'power_le', 'mileage']
 
     preprocessor = ColumnTransformer(
@@ -49,12 +50,13 @@ def train_model():
         ('preprocessor', preprocessor),
         ('regressor', RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1))
     ])
+    
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
     print("Training model...")
     model.fit(X_train, y_train)
 
-    print("Testing model")
+    print("Testing model...")
     y_pred = model.predict(X_test)
     
     mae = mean_absolute_error(y_test, y_pred)
@@ -62,19 +64,21 @@ def train_model():
 
     print("\n============ EREDMÉNYEK ============")
     print(f"Average mistake (MAE): {mae:,.0f} Ft")
-    print(f"Model accuracy (R2 Score): {r2:.2f}")
+    print(f"Model accuracy (R2 Score): {100*r2:.2f} %")
     print("======================================\n")
 
-    print("Saving model...")
+    print("Saving model and logs...")
     
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    
     models_dir = os.path.join(current_dir, 'models')
     os.makedirs(models_dir, exist_ok=True)
     model_path = os.path.join(models_dir, 'car_price_predictor.pkl')
     joblib.dump(model, model_path)
     
     print(f"Training completed. Model saved to: {model_path}")
+    
+    AILog.objects.create(mae=mae, r2_score=r2)
+    print("Log saved to AILog datatable.")
 
 if __name__ == '__main__':
     train_model()

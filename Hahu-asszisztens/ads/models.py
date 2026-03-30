@@ -66,7 +66,3 @@ class AILog(models.Model):
     class Meta:
         db_table = 'ai_logs'
         ordering = ['-created_at']
-
-    def __str__(self):
-        return f"MI Tanítás ({self.created_at.strftime('%Y.%m.%d')}) - Pontosság: {self.r2_score * 100:.0f}% - Átlagos hiba: {self.mae:,.0f} Ft"
-    

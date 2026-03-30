@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hahu-asszisztens | Árbecslő AI</title>
+    <title>Hahu-asszisztens | Árbecslő MI</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
@@ -12,25 +12,35 @@
     <div class="row justify-content-center">
         <div class="col-md-8">
             <h2 class="text-center mb-4">🚗 Használtautó Árbecslő MI</h2>
+
+            {% if ai_stat %}
+            <div class="alert alert-info text-center shadow-sm">
+                <strong>🤖 Mesterséges Intelligencia Figyelmeztetés</strong><br>
+                Ez az árbecslő modell gépi tanuláson alapul, így előfordulhatnak tévedések. <br>
+                <small>MI Pontossága: <b>{{ ai_accuracy_percent|floatformat:2 }} %</b> | Átlagos tévedés: <b>~{{ ai_stat.mae }} Ft</b></small>
+            </div>
+            {% endif %}
             
             {% if error_msg %}
                 <div class="alert alert-danger">{{ error_msg }}</div>
             {% endif %}
 
             {% if prediction %}
-                <div class="alert alert-success text-center">
+                <div class="alert alert-success text-center shadow-sm">
                     <h4>A becsült piaci ár:</h4>
-                    <h1 class="display-4 fw-bold">{{ prediction }}</h1>
+                    <h1 class="display-4 fw-bold text-success">{{ prediction }}</h1>
                 </div>
             {% endif %}
 
-            <div class="card shadow-sm">
-                <div class="card-body">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4">
                     <form method="POST">
-                        {% csrf_token %} <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Márka</label>
-                                <select name="brand" class="form-select" required>
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label text-muted fw-bold">Márka</label>
+                                <select name="brand" id="brandSelect" class="form-select" required>
                                     <option value="" disabled selected>Válassz márkát...</option>
                                     {% for b in brands %}
                                         <option value="{{ b }}">{{ b }}</option>
@@ -38,8 +48,15 @@
                                 </select>
                             </div>
                             
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Üzemanyag</label>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label text-muted fw-bold">Modell</label>
+                                <select name="model" id="modelSelect" class="form-select" required disabled>
+                                    <option value="" disabled selected>Előbb válassz márkát!</option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label text-muted fw-bold">Üzemanyag</label>
                                 <select name="fuel" class="form-select" required>
                                     <option value="" disabled selected>Válassz...</option>
                                     {% for f in fuels %}
@@ -51,30 +68,30 @@
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label class="form-label">Évjárat</label>
+                                <label class="form-label text-muted fw-bold">Évjárat</label>
                                 <input type="number" name="year" class="form-control" value="2015" required>
                             </div>
                             
                             <div class="col-md-6 mb-3">
-                                <label class="form-label">Futásteljesítmény (km)</label>
+                                <label class="form-label text-muted fw-bold">Futásteljesítmény (km)</label>
                                 <input type="number" name="mileage" class="form-control" value="150000" required>
                             </div>
                         </div>
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label class="form-label">Hengerűrtartalom (cm³)</label>
+                                <label class="form-label text-muted fw-bold">Hengerűrtartalom (cm³)</label>
                                 <input type="number" name="engine_cc" class="form-control" value="1600" required>
                             </div>
                             
                             <div class="col-md-6 mb-3">
-                                <label class="form-label">Teljesítmény (LE)</label>
+                                <label class="form-label text-muted fw-bold">Teljesítmény (LE)</label>
                                 <input type="number" name="power_le" class="form-control" value="110" required>
                             </div>
                         </div>
 
                         <div class="d-grid mt-4">
-                            <button type="submit" class="btn btn-primary btn-lg">MI Becslés Indítása 🚀</button>
+                            <button type="submit" class="btn btn-primary btn-lg fw-bold">MI Becslés Indítása 🚀</button>
                         </div>
                     </form>
                 </div>
@@ -83,6 +100,36 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.getElementById('brandSelect').addEventListener('change', function() {
+        var brand = this.value;
+        var modelSelect = document.getElementById('modelSelect');
+        
+        // Letiltjuk a modell választót, amíg tölt
+        modelSelect.disabled = true;
+        modelSelect.innerHTML = '<option value="" disabled selected>Betöltés...</option>';
+
+        // Lekérjük a Djangótól a modelleket (AJAX hívás)
+        fetch(`/api/get-models/?brand=${encodeURIComponent(brand)}`)
+            .then(response => response.json())
+            .then(data => {
+                modelSelect.innerHTML = '<option value="" disabled selected>Válassz modellt...</option>';
+                data.forEach(function(modelName) {
+                    var option = document.createElement('option');
+                    option.value = modelName;
+                    option.textContent = modelName;
+                    modelSelect.appendChild(option);
+                });
+                // Engedélyezzük a legördülőt
+                modelSelect.disabled = false;
+            })
+            .catch(error => {
+                console.error("Hiba történt a modellek betöltésekor:", error);
+                modelSelect.innerHTML = '<option value="" disabled selected>Hiba történt</option>';
+            });
+    });
+</script>
 
 </body>
 </html>
