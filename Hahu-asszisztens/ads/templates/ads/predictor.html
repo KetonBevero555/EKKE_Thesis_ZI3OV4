@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hahu-asszisztens | Árbecslő AI</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h2 class="text-center mb-4">🚗 Használtautó Árbecslő MI</h2>
+            
+            {% if error_msg %}
+                <div class="alert alert-danger">{{ error_msg }}</div>
+            {% endif %}
+
+            {% if prediction %}
+                <div class="alert alert-success text-center">
+                    <h4>A becsült piaci ár:</h4>
+                    <h1 class="display-4 fw-bold">{{ prediction }}</h1>
+                </div>
+            {% endif %}
+
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form method="POST">
+                        {% csrf_token %} <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Márka</label>
+                                <select name="brand" class="form-select" required>
+                                    <option value="" disabled selected>Válassz márkát...</option>
+                                    {% for b in brands %}
+                                        <option value="{{ b }}">{{ b }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Üzemanyag</label>
+                                <select name="fuel" class="form-select" required>
+                                    <option value="" disabled selected>Válassz...</option>
+                                    {% for f in fuels %}
+                                        <option value="{{ f }}">{{ f }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Évjárat</label>
+                                <input type="number" name="year" class="form-control" value="2015" required>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Futásteljesítmény (km)</label>
+                                <input type="number" name="mileage" class="form-control" value="150000" required>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Hengerűrtartalom (cm³)</label>
+                                <input type="number" name="engine_cc" class="form-control" value="1600" required>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Teljesítmény (LE)</label>
+                                <input type="number" name="power_le" class="form-control" value="110" required>
+                            </div>
+                        </div>
+
+                        <div class="d-grid mt-4">
+                            <button type="submit" class="btn btn-primary btn-lg">MI Becslés Indítása 🚀</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

@@ -16,7 +16,9 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from ads.views import price_predictor
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('', price_predictor, name='home'),
 ]
