@@ -5,7 +5,8 @@ import pandas as pd
 from django.shortcuts import render
 from django.conf import settings
 from django.http import JsonResponse
-from .models import Ad, AILog
+from .models import Ad, AILog, ScrapeLog, DummyAd
+from django.contrib.admin.views.decorators import staff_member_required
 
 # Keresés segítő, hogy a legördülőlistában csak valódi üzemanyag típusok jelenjenek meg
 def get_fuels(request):
@@ -32,7 +33,7 @@ def price_predictor(request):
     error_msg = None
     
     latest_ai_stat = AILog.objects.first()
-    ai_accuracy_percent = latest_ai_stat.r2_score * 100
+    ai_accuracy_percent = latest_ai_stat.r2_score * 100 if latest_ai_stat and latest_ai_stat.r2_score else 0
 
     brands = Ad.objects.exclude(brand="").values_list('brand', flat=True).distinct().order_by('brand')
     fuels = Ad.objects.exclude(fuel="").values_list('fuel', flat=True).distinct().order_by('fuel')
@@ -42,19 +43,18 @@ def price_predictor(request):
         model = joblib.load(model_path)
     except FileNotFoundError:
         model = None
-        error_msg = "Az AI modell nem található! Futtasd le a tanító scriptet."
+        error_msg = "Az MI modell nem található!"
 
     if request.method == 'POST' and model:
         try:
-            # --- ITT KERÜL BE A 'model' A PANDAS TÁBLÁBA ---
             input_data = pd.DataFrame([{
                 'brand': request.POST.get('brand'),
-                'model': request.POST.get('model'), # Ez hiányzott korábban!
+                'model': request.POST.get('model'),
                 'year': int(request.POST.get('year', 2015)),
                 'fuel': request.POST.get('fuel'),
                 'engine_cc': int(request.POST.get('engine_cc', 1500)),
                 'power_le': int(request.POST.get('power_le', 100)),
-                'mileage': int(request.POST.get('mileage', 150000))
+                'mileage': int(request.POST.get('mileage', 100000))
             }])
 
             pred_value = model.predict(input_data)[0]
@@ -73,3 +73,20 @@ def price_predictor(request):
     }
     
     return render(request, 'ads/predictor.html', context)
+
+@staff_member_required
+def dashboard(request):
+    total_ads = Ad.objects.count()
+    total_dummy = DummyAd.objects.count()
+    latest_ai = AILog.objects.first()
+    ai_accuracy_percent = latest_ai.r2_score * 100 if latest_ai and latest_ai.r2_score else 0
+    recent_scrapes = ScrapeLog.objects.order_by('-start_time')[:10]
+
+    context = {
+        'total_ads': total_ads,
+        'total_dummy': total_dummy,
+        'latest_ai': latest_ai,
+        'recent_scrapes': recent_scrapes,
+        'ai_accuracy_percent': ai_accuracy_percent,
+    }
+    return render(request, 'ads/dashboard.html', context)
