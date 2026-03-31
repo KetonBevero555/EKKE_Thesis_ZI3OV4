@@ -1,3 +1,5 @@
+
+{% load static %}
 <!DOCTYPE html>
 <html lang="hu">
 <head>
@@ -11,11 +13,11 @@
 <div class="container mt-5">
     <div class="row justify-content-center">
         <div class="col-md-8">
-            <h2 class="text-center mb-4">🚗 Használtautó Árbecslő MI</h2>
+            <h2 class="text-center mb-4">Használtautó Árbecslő MI</h2>
 
             {% if ai_stat %}
             <div class="alert alert-info text-center shadow-sm">
-                <strong>🤖 Mesterséges Intelligencia Figyelmeztetés</strong><br>
+                <strong>Mesterséges Intelligencia Figyelmeztetés</strong><br>
                 Ez az árbecslő modell gépi tanuláson alapul, így előfordulhatnak tévedések. <br>
                 <small>MI Pontossága: <b>{{ ai_accuracy_percent|floatformat:2 }} %</b> | Átlagos tévedés: <b>~{{ ai_stat.mae }} Ft</b></small>
             </div>
@@ -57,11 +59,8 @@
 
                             <div class="col-md-4 mb-3">
                                 <label class="form-label text-muted fw-bold">Üzemanyag</label>
-                                <select name="fuel" class="form-select" required>
-                                    <option value="" disabled selected>Válassz...</option>
-                                    {% for f in fuels %}
-                                        <option value="{{ f }}">{{ f }}</option>
-                                    {% endfor %}
+                                <select name="fuel" id="fuelSelect" class="form-select" required disabled>
+                                    <option value="" disabled selected>Előbb válassz modellt!</option>
                                 </select>
                             </div>
                         </div>
@@ -91,44 +90,16 @@
                         </div>
 
                         <div class="d-grid mt-4">
-                            <button type="submit" class="btn btn-primary btn-lg fw-bold">MI Becslés Indítása 🚀</button>
+                            <button type="submit" class="btn btn-primary btn-lg fw-bold">MI Becslés Indítása</button>
                         </div>
                     </form>
                 </div>
             </div>
-
         </div>
     </div>
 </div>
-
-<script>
-    document.getElementById('brandSelect').addEventListener('change', function() {
-        var brand = this.value;
-        var modelSelect = document.getElementById('modelSelect');
-        
-        // Letiltjuk a modell választót, amíg tölt
-        modelSelect.disabled = true;
-        modelSelect.innerHTML = '<option value="" disabled selected>Betöltés...</option>';
-
-        // Lekérjük a Djangótól a modelleket (AJAX hívás)
-        fetch(`/api/get-models/?brand=${encodeURIComponent(brand)}`)
-            .then(response => response.json())
-            .then(data => {
-                modelSelect.innerHTML = '<option value="" disabled selected>Válassz modellt...</option>';
-                data.forEach(function(modelName) {
-                    var option = document.createElement('option');
-                    option.value = modelName;
-                    option.textContent = modelName;
-                    modelSelect.appendChild(option);
-                });
-                // Engedélyezzük a legördülőt
-                modelSelect.disabled = false;
-            })
-            .catch(error => {
-                console.error("Hiba történt a modellek betöltésekor:", error);
-                modelSelect.innerHTML = '<option value="" disabled selected>Hiba történt</option>';
-            });
-    });
+<script
+    src="{% static 'js/predictor.js' %}">
 </script>
 
 </body>

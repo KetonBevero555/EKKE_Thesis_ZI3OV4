@@ -16,10 +16,11 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from ads.views import price_predictor, get_models
+from ads.views import price_predictor, get_models, get_fuels
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', price_predictor, name='home'),
-    path('api/get-models/', get_models, name='get_models'), # Ezen a címen keresi a JavaScript az adatokat
+    path('api/get-models/', get_models, name='get_models'), # Ezen a címen keresi a JavaScript a létező modelleket márkához
+    path('api/get-fuels/', get_fuels, name='get_fuels'), # Ezen a címen keresi a JavaScript a létező üzemanyagokat márkához
 ]

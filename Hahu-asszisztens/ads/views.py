@@ -7,16 +7,26 @@ from django.conf import settings
 from django.http import JsonResponse
 from .models import Ad, AILog
 
-# --- EZ FELEL A DINAMIKUS LEGÖRDÜLŐÉRT ---
+# Keresés segítő, hogy a legördülőlistában csak valódi üzemanyag típusok jelenjenek meg
+def get_fuels(request):
+    brand = request.GET.get('brand')
+    model = request.GET.get('model')
+    if brand and model:
+        fuels = Ad.objects.filter(brand=brand, model=model).exclude(fuel__isnull=True).exclude(fuel="").exclude(fuel="None").values_list('fuel', flat=True).distinct().order_by('fuel')
+        if not fuels:
+            return JsonResponse(['Benzin', 'Dízel', 'Elektromos', 'Hibrid'], safe=False)
+        return JsonResponse(list(fuels), safe=False)
+    return JsonResponse([], safe=False)
+
+# Keresés segítő, hogy a legördülőlistában csak valódi modellek jelenjenek meg
 def get_models(request):
     brand = request.GET.get('brand')
     if brand:
-        # Lekérjük az adott márkához tartozó egyedi modelleket
         models = Ad.objects.filter(brand=brand).exclude(model="").values_list('model', flat=True).distinct().order_by('model')
         return JsonResponse(list(models), safe=False)
     return JsonResponse([], safe=False)
 
-# --- EZ FELEL AZ ÁRBECSLÉSÉRT ---
+# Kommunikáció a frontenddel - Ő adja a paramétereket és kapja vissza a becslést - Ő felel a tájéokztatásért is az MI pontosságáról
 def price_predictor(request):
     prediction = None
     error_msg = None
