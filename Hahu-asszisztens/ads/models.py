@@ -38,9 +38,6 @@ class BaseAd(models.Model):
         abstract = True
 
 class Ad(BaseAd):
-    # Felhasználók, akik kedvelték a hirdetést
-    favorited_by = models.ManyToManyField(User, related_name='favorite_ads', blank=True)
-
     class Meta:
         db_table = 'ads'
 

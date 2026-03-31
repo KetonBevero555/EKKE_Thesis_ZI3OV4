@@ -4,13 +4,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hahu-asszisztens | Vezérlőpult</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22 fill=%22%23ffffff%22><path d=%22M2.52 3.515A2.5 2.5 0 0 1 4.82 2h6.362c1 0 1.904.596 2.298 1.515l.792 1.848c.075.175.21.319.38.404.5.25.855.715.965 1.262l.335 1.679q.05.242.049.49v.413c0 .814-.39 1.543-1 1.997V13.5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1-.5-.5v-1.338c-1.292.048-2.745.088-4 .088s-2.708-.04-4-.088V13.5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1-.5-.5v-1.892c-.61-.454-1-1.183-1-1.997v-.413a2.5 2.5 0 0 1 .049-.49l.335-1.68c.11-.546.465-1.012.964-1.261a.8.8 0 0 0 .381-.404l.792-1.848ZM3 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2m10 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2M6 8a1 1 0 0 0 0 2h4a1 1 0 1 0 0-2zM2.906 5.189a.51.51 0 0 0 .497.731c.91-.073 3.35-.17 4.597-.17s3.688.097 4.597.17a.51.51 0 0 0 .497-.731l-.956-1.913A.5.5 0 0 0 11.691 3H4.309a.5.5 0 0 0-.447.276L2.906 5.19Z%22/></svg>">
 </head>
 <body class="bg-light">
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4 shadow-sm">
     <div class="container">
-        <a class="navbar-brand fw-bold" href="{% url 'home' %}">Hahu-asszisztens</a>
+        <a class="navbar-brand fw-bold" href="{% url 'home' %}">
+            <i class="bi bi-car-front-fill me-1"></i> Hahu-asszisztens
+        </a>
         <div class="d-flex">
             <a href="{% url 'home' %}" class="btn btn-outline-light me-2">Árbecslő MI</a>
             <a href="{% url 'dashboard' %}" class="btn btn-primary">Vezérlőpult</a>
@@ -22,19 +26,19 @@
     <h2 class="mb-4">Rendszer Statisztikák</h2>
 
     <div class="row mb-4">
-        <div class="col-md-4">
-            <div class="card shadow-sm border-0 border-start border-primary border-5">
-                <div class="card-body">
-                    <h6 class="text-muted fw-bold mb-1">Legutóbbi Hirdetések</h6>
+        <div class="col-md-4 mb-3">
+            <div class="card shadow rounded-3 border-0 border-start border-primary border-5 h-100">
+                <div class="card-body p-4">
+                    <h6 class="text-muted fw-bold mb-1 text-uppercase">Legutóbbi Hirdetések Száma</h6>
                     <h2 class="text-primary fw-bold mb-0">{{ total_ads }} <small class="text-muted fs-6">db</small></h2>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-4">
-            <div class="card shadow-sm border-0 border-start border-warning border-5">
-                <div class="card-body">
-                    <h6 class="text-muted fw-bold mb-1">Legutóbbi MI Pontosság</h6>
+        <div class="col-md-4 mb-3">
+            <div class="card shadow rounded-3 border-0 border-start border-warning border-5 h-100">
+                <div class="card-body p-4">
+                    <h6 class="text-muted fw-bold mb-1 text-uppercase">Legutóbbi MI Pontosság</h6>
                     <h2 class="text-warning fw-bold mb-0">
                         {% if latest_ai %}
                             {{ ai_accuracy_percent|floatformat:2 }} %
@@ -42,14 +46,19 @@
                             N/A
                         {% endif %}
                     </h2>
+                    {% if latest_ai %}
+                    <div class="mt-2 pt-2 border-top">
+                        <small class="text-muted fw-bold">Frissítve: {{ latest_ai.created_at|date:"Y.m.d H:i" }}</small>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
 
-        <div class="col-md-4">
-            <div class="card shadow-sm border-0 border-start border-success border-5">
-                <div class="card-body">
-                    <h6 class="text-muted fw-bold mb-1">Legutóbbi Átlagos Tévedés</h6>
+        <div class="col-md-4 mb-3">
+            <div class="card shadow rounded-3 border-0 border-start border-success border-5 h-100">
+                <div class="card-body p-4">
+                    <h6 class="text-muted fw-bold mb-1 text-uppercase">Legutóbbi Átlagos Tévedés</h6>
                     <h2 class="text-success fw-bold mb-0">
                         {% if latest_ai %}
                             {{ latest_ai.mae }} Ft
@@ -62,53 +71,52 @@
         </div>
     </div>
 
-    <div class="card shadow-sm border-0">
-        <div class="card-header bg-white py-3">
-            <h5 class="mb-0 fw-bold">Utolsó 10 Adatgyűjtés (ScrapeLog)</h5>
-        </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-hover table-borderless mb-0">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Kezdés</th>
-                            <th>Befejezés</th>
-                            <th>Várt (db)</th>
-                            <th>Letöltött (db)</th>
-                            <th>Státusz</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for log in recent_scrapes %}
-                        <tr class="align-middle">
-                            <td>{{ log.start_time|date:"Y.m.d H:i" }}</td>
-                            <td>
-                                {% if log.end_time %}
-                                    {{ log.end_time|date:"Y.m.d H:i" }}
-                                {% else %}
-                                    <span class="text-muted">Folyamatban...</span>
-                                {% endif %}
-                            </td>
-                            <td>{{ log.expected_cars }}</td>
-                            <td class="fw-bold">{{ log.actual_scraped }}</td>
-                            <td>
-                                {% if log.status == 'SUCCESS' %}
-                                    <span class="badge bg-success">Sikeres</span>
-                                {% elif log.status == 'PENDING' %}
-                                    <span class="badge bg-warning text-dark">Folyamatban</span>
-                                {% else %}
-                                    <span class="badge bg-danger">{{ log.status }}</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="5" class="text-center text-muted py-4">Nincs még adatgyűjtési napló.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+    <div class="card shadow rounded-3 border-0">
+    <div class="card-header bg-white py-3 border-bottom">
+        <h5 class="mb-0 fw-bold"> Utolsó 10 Adatgyűjtés (ScrapeLog)</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-striped table-borderless mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Kezdés</th>
+                        <th>Befejezés</th>
+                        <th>Elmentett (db)</th>
+                        <th>Státusz</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in recent_scrapes %}
+                    <tr class="align-middle">
+                        <td>{{ log.start_time|date:"Y.m.d H:i" }}</td>
+                        <td>
+                            {% if log.end_time %}
+                                {{ log.end_time|date:"Y.m.d H:i" }}
+                            {% else %}
+                                <span class="text-muted">Folyamatban...</span>
+                            {% endif %}
+                        </td>
+                        <td class="fw-bold">{{ log.actual_scraped }}</td>
+                        <td>
+                            {% if log.status == 'SUCCESS' %}
+                                <span class="badge bg-success">Sikeres</span>
+                            {% elif log.status == 'SCRAPER_STARTED' or log.status == 'FUT' or log.status == 'PENDING' %}
+                                <span class="badge bg-primary">Folyamatban</span>
+                            {% else %}
+                                <span class="badge bg-danger text-wrap text-start" style="max-width: 350px;" title="{{ log.status }}">
+                                    {{ log.status|truncatechars:50 }}
+                                </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center text-muted py-4">Nincs még adatgyűjtési napló.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
     </div>
 </div>

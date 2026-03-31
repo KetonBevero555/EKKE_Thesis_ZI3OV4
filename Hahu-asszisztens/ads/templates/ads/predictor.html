@@ -1,4 +1,3 @@
-
 {% load static %}
 <!DOCTYPE html>
 <html lang="hu">
@@ -6,101 +5,131 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hahu-asszisztens | Árbecslő MI</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 16 16%22 fill=%22%23ffffff%22><path d=%22M2.52 3.515A2.5 2.5 0 0 1 4.82 2h6.362c1 0 1.904.596 2.298 1.515l.792 1.848c.075.175.21.319.38.404.5.25.855.715.965 1.262l.335 1.679q.05.242.049.49v.413c0 .814-.39 1.543-1 1.997V13.5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1-.5-.5v-1.338c-1.292.048-2.745.088-4 .088s-2.708-.04-4-.088V13.5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1-.5-.5v-1.892c-.61-.454-1-1.183-1-1.997v-.413a2.5 2.5 0 0 1 .049-.49l.335-1.68c.11-.546.465-1.012.964-1.261a.8.8 0 0 0 .381-.404l.792-1.848ZM3 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2m10 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2M6 8a1 1 0 0 0 0 2h4a1 1 0 1 0 0-2zM2.906 5.189a.51.51 0 0 0 .497.731c.91-.073 3.35-.17 4.597-.17s3.688.097 4.597.17a.51.51 0 0 0 .497-.731l-.956-1.913A.5.5 0 0 0 11.691 3H4.309a.5.5 0 0 0-.447.276L2.906 5.19Z%22/></svg>">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body class="bg-light">
 
-<div class="container mt-5">
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-5 shadow-sm">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="{% url 'home' %}">
+            <i class="bi bi-car-front-fill me-1"></i> Hahu-asszisztens
+        </a>
+        <div class="d-flex">
+            <a href="{% url 'home' %}" class="btn btn-primary me-2 shadow-sm">Árbecslő MI</a>
+            {% if request.user.is_staff %}
+                <a href="{% url 'dashboard' %}" class="btn btn-outline-light">Vezérlőpult</a>
+            {% endif %}
+        </div>
+    </div>
+</nav>
+
+<div class="container mb-5">
     <div class="row justify-content-center">
-        <div class="col-md-8">
-            <h2 class="text-center mb-4">Használtautó Árbecslő MI</h2>
+        <div class="col-md-9 col-lg-8">
+            <h2 class="text-center mb-5 fw-bold text-dark display-6">Használtautó Árbecslő MI</h2>
 
             {% if ai_stat %}
-            <div class="alert alert-info text-center shadow-sm">
-                <strong>Mesterséges Intelligencia Figyelmeztetés</strong><br>
-                Ez az árbecslő modell gépi tanuláson alapul, így előfordulhatnak tévedések. <br>
-                <small>MI Pontossága: <b>{{ ai_accuracy_percent|floatformat:2 }} %</b> | Átlagos tévedés: <b>~{{ ai_stat.mae }} Ft</b></small>
+            <div class="card shadow rounded-4 border-0 mb-4 bg-white">
+                <div class="card-body p-4 text-center">
+                    <h6 class="text-muted fw-bold mb-2 text-uppercase">Gép Aktuális Állapota</h6>
+                    <div class="d-flex justify-content-center gap-4 text-secondary flex-wrap">
+                        <span>Pontosság: <b class="text-dark">{{ ai_accuracy_percent|floatformat:2 }} %</b></span>
+                        <span>Átlagos tévedés: <b class="text-dark">~{{ ai_stat.mae }} Ft</b></span>
+                    </div>
+                </div>
             </div>
             {% endif %}
             
             {% if error_msg %}
-                <div class="alert alert-danger">{{ error_msg }}</div>
+                <div class="alert alert-danger shadow-sm rounded-3">{{ error_msg }}</div>
             {% endif %}
 
             {% if prediction %}
-                <div class="alert alert-success text-center shadow-sm">
-                    <h4>A becsült piaci ár:</h4>
-                    <h1 class="display-4 fw-bold text-success">{{ prediction }}</h1>
+                <div class="alert alert-success text-center shadow rounded-4 mb-4 p-4 border-0">
+                    <h5 class="mb-2 text-success-emphasis fw-bold">A becsült piaci ár:</h5>
+                    <h1 class="display-3 fw-bolder text-success mb-0">{{ prediction }}</h1>
                 </div>
             {% endif %}
 
-            <div class="card shadow-sm border-0">
-                <div class="card-body p-4">
+            <div class="card shadow-lg rounded-4 border-0 bg-white">
+                <div class="card-body p-4 p-md-5">
                     <form method="POST">
                         {% csrf_token %}
                         
                         <div class="row">
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label text-muted fw-bold">Márka</label>
-                                <select name="brand" id="brandSelect" class="form-select" required>
-                                    <option value="" disabled selected>Válassz márkát...</option>
+                            <div class="col-md-4 mb-4">
+                                <label class="form-label">Márka</label>
+                                <select name="brand" id="brandSelect" class="form-select form-select-lg rounded-3 custom-input" required>
+                                    <option value="" disabled selected>Válassz...</option>
                                     {% for b in brands %}
                                         <option value="{{ b }}">{{ b }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
                             
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label text-muted fw-bold">Modell</label>
-                                <select name="model" id="modelSelect" class="form-select" required disabled>
-                                    <option value="" disabled selected>Előbb válassz márkát!</option>
+                            <div class="col-md-4 mb-4">
+                                <label class="form-label">Modell</label>
+                                <select name="model" id="modelSelect" class="form-select form-select-lg rounded-3 custom-input" required disabled>
+                                    <option value="" disabled selected>Előbb márka!</option>
                                 </select>
                             </div>
 
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label text-muted fw-bold">Üzemanyag</label>
-                                <select name="fuel" id="fuelSelect" class="form-select" required disabled>
-                                    <option value="" disabled selected>Előbb válassz modellt!</option>
+                            <div class="col-md-4 mb-4">
+                                <label class="form-label">Üzemanyagtípus</label>
+                                <select name="fuel" id="fuelSelect" class="form-select form-select-lg rounded-3 custom-input" required disabled>
+                                    <option value="" disabled selected>Előbb modell!</option>
                                 </select>
                             </div>
                         </div>
 
                         <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label text-muted fw-bold">Évjárat</label>
-                                <input type="number" name="year" class="form-control" value="2015" required>
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label">Évjárat</label>
+                                <input type="number" name="year" class="form-control form-control-lg rounded-3 custom-input" value="2015" required>
                             </div>
                             
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label text-muted fw-bold">Futásteljesítmény (km)</label>
-                                <input type="number" name="mileage" class="form-control" value="150000" required>
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label">Futásteljesítmény (km)</label>
+                                <input type="number" name="mileage" class="form-control form-control-lg rounded-3 custom-input" value="150000" required>
                             </div>
                         </div>
 
                         <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label text-muted fw-bold">Hengerűrtartalom (cm³)</label>
-                                <input type="number" name="engine_cc" class="form-control" value="1600" required>
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label">Hengerűrtartalom (cm³)</label>
+                                <input type="number" name="engine_cc" class="form-control form-control-lg rounded-3 custom-input" value="1600" required>
                             </div>
                             
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label text-muted fw-bold">Teljesítmény (LE)</label>
-                                <input type="number" name="power_le" class="form-control" value="110" required>
+                            <div class="col-md-6 mb-4">
+                                <label class="form-label">Teljesítmény (LE)</label>
+                                <input type="number" name="power_le" class="form-control form-control-lg rounded-3 custom-input" value="110" required>
                             </div>
                         </div>
 
-                        <div class="d-grid mt-4">
-                            <button type="submit" class="btn btn-primary btn-lg fw-bold">MI Becslés Indítása</button>
+                        <div class="d-grid mt-3 mb-4">
+                            <button type="submit" class="btn btn-primary btn-lg fw-bold rounded-3 shadow py-3">Becslés Indítása</button>
                         </div>
+                        
+                        <div class="alert alert-light border rounded-3 text-center mb-0 mt-2" role="alert">
+                            <small class="text-muted">
+                                <i class="fw-bold">Figyelem:</i> Ez az árbecslő egy mesterséges intelligencia (AI) alapú modell, 
+                                amely a <b>hasznaltauto.hu</b> aktuális hirdetései alapján tanul. A becslés pontossága a betáplált 
+                                adatoktól függ, és a modell hibázhat. A kapott eredmény kizárólag tájékoztató jellegű.
+                            </small>
+                        </div>
+
                     </form>
                 </div>
             </div>
+
         </div>
     </div>
 </div>
-<script
-    src="{% static 'js/predictor.js' %}">
-</script>
+
+<script src="{% static 'js/predictor.js' %}"></script>
 
 </body>
 </html>

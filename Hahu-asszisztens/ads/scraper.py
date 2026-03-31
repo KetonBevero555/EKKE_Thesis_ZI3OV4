@@ -3,6 +3,7 @@ import sys
 import django
 import re
 import time
+from django.utils import timezone
 from playwright.sync_api import sync_playwright
 from seleniumbase import sb_cdp
 
@@ -15,6 +16,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hahu_backend.settings')
 django.setup()
 
 from ads.models import DummyAd, Ad, ScrapeLog
+from ai.train import train_model
 
 # Színek konzol kimenethez
 class Colors:
@@ -106,8 +108,8 @@ def extract_car_data(card: any) -> dict | None:
     brand = ""; model = ""
     idx = parts.index('szemelyauto')
     if len(parts) > idx + 2:
-        brand = parts[idx+1].capitalize()
-        model = parts[idx+2].capitalize().replace('_', ' ')
+        brand = parts[idx+1].replace('_', ' ').title()
+        model = parts[idx+2].replace('_', ' ').title()
 
     # Árak & Bérlés
     price_primary = card.query_selector(".pricefield-primary")
@@ -156,28 +158,36 @@ def save_car_to_db(data: dict) -> bool:
     return created
 
 # Adatok átmásolása az Ad táblába
-def finalize_migration(log: ScrapeLog, total_saved: int) -> None:
+def finalize_migration(log: ScrapeLog) -> None:
     print("\n================================================")
-    if total_saved > 80000:
-        print("SCRAPER FINISHED!")
+    dummy_count = DummyAd.objects.count()
+    if dummy_count > 0:
+        print(f"SCRAPER FINISHED! Found {dummy_count} cars. Starting migration...")
         try:
             Ad.objects.all().delete()
             dummy_data = DummyAd.objects.values().exclude(id__isnull=True)
             new_ads = [Ad(**item) for item in dummy_data]
             Ad.objects.bulk_create(new_ads)
-            
-            print(f"-> Copied {len(new_ads)} cars to the Ad table.")
+            final_ad_count = Ad.objects.count()
+            print(f"-> Copied {final_ad_count} cars to the Ad table.")
+
             DummyAd.objects.all().delete()
-            
             log.status = "SUCCESS"
-            log.actual_scraped = total_saved
+            log.actual_scraped = final_ad_count
+            log.end_time = timezone.now()
             log.save()
             print("Log saved with SUCCESS status.")
+            
         except Exception as e:
             print(f"Error occurred while saving log: {e}")
+            log.status = f"MIGRATION_ERROR: {str(e)}"
+            log.end_time = timezone.now()
+            log.save()
     else:
-        print("Error occurred, no data to save.")
-        DummyAd.objects.all().delete()
+        print("Error occurred, no data in Dummy table to save.")
+        log.status = "NO_DATA_SCRAPED"
+        log.actual_scraped = 0
+        log.end_time = timezone.now()
         log.save()
 
 # Fő futtató függvény
@@ -283,11 +293,15 @@ def run_scraper() -> None:
             try: browser.close()
             except: pass
 
-    # Migráció indítása
+    # Migráció indítása vagy Hiba lezárása
     if success:
-        finalize_migration(log, total_saved)
+        finalize_migration(log)
+        from ai.train import train_model 
+        train_model()
     else:
         print("Error or interrupted execution! No data saved.")
+        log.actual_scraped = DummyAd.objects.count()
+        log.end_time = timezone.now()
         log.save()
 
 if __name__ == "__main__":
