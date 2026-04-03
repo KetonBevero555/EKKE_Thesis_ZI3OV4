@@ -16,6 +16,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hahu_backend.settings')
 django.setup()
 
 from ads.models import DummyAd, Ad, ScrapeLog
+from ads.setup_profile_for_scraper import setup_profile
 from ai.train import train_model
 
 # Színek konzol kimenethez
@@ -65,7 +66,7 @@ def setup_browser() -> tuple:
     base_dir = os.path.dirname(os.path.abspath(__file__))
     profile_dir = os.path.join(base_dir, "chrome_profile")
     try:
-        sb = sb_cdp.Chrome(user_data_dir=profile_dir, incognito=False)
+        sb = sb_cdp.Chrome(user_data_dir=profile_dir, incognito=False, headless=False)
         return sb, sb.get_endpoint_url()
     except Exception as e:
         print(f"Error starting browser: {e}")
@@ -74,7 +75,7 @@ def setup_browser() -> tuple:
 # AdBlock (Kép és Média tiltása) aktiválása az adott oldalon
 def activate_adblock(page: any) -> None:
     print("Blocking images and media...")
-    def route_intercept(route):
+    def route_intercept(route: any) -> None:
         if route.request.resource_type in ["image", "media"]:
             route.abort()
         else:
@@ -91,7 +92,7 @@ def wait_for_content(page: any, selector=".talalati-sor", attempts=3, timeout=45
         except Exception as e:
             print(f"TIMEOUT! Reloading the page... Attempt ({attempt}/{attempts})")
             page.reload()
-            time.sleep(2)
+            time.sleep(5)
     return False
 
 # Egyetlen autó adatainak kinyerése a HTML kártyából
@@ -214,32 +215,23 @@ def run_scraper() -> None:
             # Kezdő navigáció
             print("Page loading...")
             page.goto("https://www.hasznaltauto.hu/")
-            try: page.wait_for_load_state("domcontentloaded")
-            except: pass
-            sb.solve_captcha()
-            search_btn = page.query_selector('[data-testid="submit-button"]')
+            try:
+                page.wait_for_load_state("domcontentloaded")
+            except:
+                pass
 
-            if search_btn:
-                search_btn.click()
-                print("Loading search results...")
-                if not wait_for_content(page, timeout=45000):
-                    print("ERROR: Page not loaded...")
-                sb.solve_captcha()
+            search_btn = page.query_selector('[data-testid="submit-button"]')
+            search_btn.click()
+            print("Loading search results...")
+            if not wait_for_content(page):
+                print("ERROR: Page not loaded...")
             else:
-                print("ERROR: Button not found, jumping to results page...")
-                page.goto("https://www.hasznaltauto.hu/talalatilista/")
+                print("Search results loaded. Starting to scrape...")
 
             # Oldalak feldolgozása
             page_num = 1
             while True:
                 print(f"\n--- {page_num}. PAGE ---")
-                
-                # Tartalom ellenőrzése
-                if not wait_for_content(page):
-                    print("FINAL TIMEOUT! Scraper stopped on this page.")
-                    log.status = f"TIMEOUT_ON_PAGE_{page_num}"
-                    log.save()
-                    break
 
                 # Autók kinyerése az aktuális oldalról
                 car_cards = page.query_selector_all(".talalati-sor")
@@ -267,7 +259,7 @@ def run_scraper() -> None:
                 print(f"[SAVE] Ads saved: {new_on_page}")
                 if updated_on_page > 0:
                     print(f"{Colors.YELLOW}[UPDATE] Updated ads: {updated_on_page} {Colors.RESET}")
-                print(f"[STATUS] Total saved: {total_saved} cars.")
+                print(f"[STATUS] Total saved: {total_saved} cars")
 
                 # Lapozás
                 next_li = page.query_selector("li.next")
@@ -277,12 +269,21 @@ def run_scraper() -> None:
                         print(f"Go to page ({page_num + 1})...")
                         next_link.click()
                         page_num += 1
-                        sb.solve_captcha()
                     else:
                         success = True; break
                 else:
                     print("Last page reached.")
                     success = True; break
+                
+                # Tiltás elleni védelem
+                time.sleep(2)
+
+                # Tartalom ellenőrzése
+                if not wait_for_content(page):
+                    print("FINAL TIMEOUT! Scraper stopped on this page.")
+                    log.status = f"TIMEOUT_ON_PAGE_{page_num}"
+                    log.save()
+                    break
 
         except Exception as e:
             print(f"Error occurred: {e}")
@@ -290,8 +291,10 @@ def run_scraper() -> None:
             success = False
         finally:
             print("Closing browser...")
-            try: browser.close()
-            except: pass
+            try:
+                browser.close()
+            except:
+                pass
 
     # Migráció indítása vagy Hiba lezárása
     if success:
