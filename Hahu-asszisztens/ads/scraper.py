@@ -1,28 +1,37 @@
 import os
 import sys
+import time
+import shutil
 import django
 import re
-import time
 from django.utils import timezone
 from playwright.sync_api import sync_playwright
 from seleniumbase import sb_cdp
 
-# Django konfiguráció
+# Konfiguráció
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
-
-# Django setup
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hahu_backend.settings')
 django.setup()
 
-from ads.models import DummyAd, Ad, ScrapeLog
-from ads.setup_profile_for_scraper import setup_profile
+# Modellek importálása
+from ads.models import DummyAd, ScrapeLog, Ad
 from ai.train import train_model
 
-# Színek konzol kimenethez
+# Színek konzol kiíráshoz
 class Colors:
     YELLOW = '\033[93m'
     RESET = '\033[0m'
+
+# AdBlock (Kép és Média tiltása) aktiválása az adott oldalon
+def activate_adblock(page: any) -> None:
+    print("Blocking images and media...")
+    def route_intercept(route: any) -> None:
+        if route.request.resource_type in ["image", "media"]:
+            route.abort()
+        else:
+            route.continue_()
+    page.route("**/*", route_intercept)
 
 # Ár tisztítása
 def clean_price(text: str) -> int | None:
@@ -44,12 +53,18 @@ def parse_tech_info(info_elements: list[str]) -> dict:
             data['month'] = int(re.sub(r'[^\d]', '', parts[1]))
         elif re.match(r'^\d{4}$', raw_text.strip(',')):
             data['year'] = int(re.sub(r'[^\d]', '', raw_text))
-        elif 'benzin' in text_lower and 'lpg' not in text_lower: data['fuel'] = 'Benzin'
-        elif 'dízel' in text_lower or 'diesel' in text_lower: data['fuel'] = 'Dízel'
-        elif 'elektromos' in text_lower: data['fuel'] = 'Elektromos'
-        elif 'hibrid' in text_lower: data['fuel'] = 'Hibrid'
-        elif 'lpg' in text_lower: data['fuel'] = 'LPG'
-        elif 'cng' in text_lower: data['fuel'] = 'CNG'
+        elif 'benzin' in text_lower and 'lpg' not in text_lower:
+            data['fuel'] = 'Benzin'
+        elif 'dízel' in text_lower or 'diesel' in text_lower:
+            data['fuel'] = 'Dízel'
+        elif 'elektromos' in text_lower:
+            data['fuel'] = 'Elektromos'
+        elif 'hibrid' in text_lower:
+            data['fuel'] = 'Hibrid'
+        elif 'lpg' in text_lower:
+            data['fuel'] = 'LPG'
+        elif 'cng' in text_lower:
+            data['fuel'] = 'CNG'
         elif 'cm³' in raw_text:
             data['engine_cc'] = int(re.sub(r'[^\d]', '', raw_text))
         elif 'kW' in raw_text:
@@ -61,27 +76,6 @@ def parse_tech_info(info_elements: list[str]) -> dict:
             
     return data
 
-# Böngésző profil és SeleniumBase indítása
-def setup_browser() -> tuple:
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    profile_dir = os.path.join(base_dir, "chrome_profile")
-    try:
-        sb = sb_cdp.Chrome(user_data_dir=profile_dir, incognito=False, headless=False)
-        return sb, sb.get_endpoint_url()
-    except Exception as e:
-        print(f"Error starting browser: {e}")
-        return None, None
-
-# AdBlock (Kép és Média tiltása) aktiválása az adott oldalon
-def activate_adblock(page: any) -> None:
-    print("Blocking images and media...")
-    def route_intercept(route: any) -> None:
-        if route.request.resource_type in ["image", "media"]:
-            route.abort()
-        else:
-            route.continue_()
-    page.route("**/*", route_intercept)
-
 # Tartalom betöltése Retry (Újrapróbálkozás) logikával
 # Visszatér True-val ha sikerült, False-al ha végleges timeout
 def wait_for_content(page: any, selector=".talalati-sor", attempts=3, timeout=45000) -> bool:
@@ -90,7 +84,7 @@ def wait_for_content(page: any, selector=".talalati-sor", attempts=3, timeout=45
             page.wait_for_selector(selector, timeout=timeout)
             return True
         except Exception as e:
-            print(f"TIMEOUT! Reloading the page... Attempt ({attempt}/{attempts})")
+            print(f"[!] TIMEOUT! Reloading the page... Attempt ({attempt}/{attempts})")
             page.reload()
             time.sleep(5)
     return False
@@ -170,70 +164,115 @@ def finalize_migration(log: ScrapeLog) -> None:
             new_ads = [Ad(**item) for item in dummy_data]
             Ad.objects.bulk_create(new_ads)
             final_ad_count = Ad.objects.count()
-            print(f"-> Copied {final_ad_count} cars to the Ad table.")
+            print(f"<P> -> Copied {final_ad_count} cars to the Ad table.")
 
             DummyAd.objects.all().delete()
             log.status = "SUCCESS"
             log.actual_scraped = final_ad_count
             log.end_time = timezone.now()
             log.save()
-            print("Log saved with SUCCESS status.")
+            print("<P> Log saved with SUCCESS status.")
             
         except Exception as e:
-            print(f"Error occurred while saving log: {e}")
+            print(f"<!> Error occurred while saving log: {e}")
             log.status = f"MIGRATION_ERROR: {str(e)}"
             log.end_time = timezone.now()
             log.save()
     else:
-        print("Error occurred, no data in Dummy table to save.")
+        print("<!> Error occurred, no data in Dummy table to save.")
         log.status = "NO_DATA_SCRAPED"
         log.actual_scraped = 0
         log.end_time = timezone.now()
         log.save()
 
-# Fő futtató függvény
-def run_scraper() -> None:
-    print("--- SCRAPER STARTED ---")
-    print("Deleting old dummy data...")
+# --- FŐ FOLYAMAT ---
 
+def run_scraper():
+    print("--- STARTING SCRAPER ---")
+    
+    print("<P> Deleting old dummy data...")
     DummyAd.objects.all().delete()
+    
+    print("<P> Creating new ScrapeLog entry...")
     log = ScrapeLog.objects.create(expected_cars=0, status="SCRAPER_STARTED")
-    sb, endpoint_url = setup_browser()
-    if not sb: return
+
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    profile_dir = os.path.join(base_dir, "chrome_profile")
+    
+    if os.path.exists(profile_dir):
+        print(f"[*] Deleting old profile: {profile_dir}...")
+        try:
+            shutil.rmtree(profile_dir)
+            print("[*] Old profile deleted successfully!")
+        except Exception as e:
+            print(f"[!] Error occurred while deleting the profile: {e}")
+            log.status = f"CRITICAL_ERROR: Profile deletion failed: {e}"
+            log.save()
+            return
+    
+    print(f"[*] Creating new profile folder here: {profile_dir}")
+
+    try:
+        sb = sb_cdp.Chrome(user_data_dir=profile_dir, incognito=False, headless=False)
+        endpoint = sb.get_endpoint_url()
+        print(f"<P> Browser is running. Endpoint: {endpoint}")
+    except Exception as e:
+        print(f"[!] Error starting browser: {e}")
+        log.status = f"CRITICAL_ERROR: Browser start failed: {e}"
+        log.save()
+        return
 
     success = False
     total_saved = 0
 
     with sync_playwright() as p:
         try:
-            browser = p.chromium.connect_over_cdp(endpoint_url)
+            browser = p.chromium.connect_over_cdp(endpoint)
             context = browser.contexts[0]
             page = context.pages[0]
 
-            activate_adblock(page)
-
-            # Kezdő navigáció
-            print("Page loading...")
+            print("<P> Starting the homepage...")
             page.goto("https://www.hasznaltauto.hu/")
-            try:
-                page.wait_for_load_state("domcontentloaded")
-            except:
-                pass
+            
+            print("<P> Waiting/Captcha verification...")
+            sb.solve_captcha()
 
+            print("<P> Searching for cookie panel...")
+            cookie_accepted = False
+            for _ in range(10):
+                try:
+                    agree_btn = page.query_selector("#didomi-notice-agree-button")
+                    if agree_btn and agree_btn.is_visible():
+                        agree_btn.click(force=True)
+                        print("<P> Cookies accepted successfully!")
+                        cookie_accepted = True
+                        break
+                except:
+                    pass
+                time.sleep(2)
+            
+            if not cookie_accepted:
+                print("<P> Cookie panel not found!")
+
+            print("<P> Clicking the 'Search' button...")
             search_btn = page.query_selector('[data-testid="submit-button"]')
-            search_btn.click()
-            print("Loading search results...")
-            if not wait_for_content(page):
-                print("ERROR: Page not loaded...")
+            if search_btn:
+                search_btn.click()
+                
+                if not wait_for_content(page):
+                    raise Exception("Search results failed to load!")
+                    
+                print("<P> Search results loaded.\nProfile configured! Starting data extraction...")
+                log.status = "SCRAPING_IN_PROGRESS"
+                log.save()
             else:
-                print("Search results loaded. Starting to scrape...")
-
-            # Oldalak feldolgozása
+                raise Exception("Search button missing!")
+            
             page_num = 1
             while True:
-                print(f"\n--- {page_num}. PAGE ---")
+                print(f"\n--- PAGE {page_num} ---")
 
-                # Autók kinyerése az aktuális oldalról
+                # Kártyák lekérése
                 car_cards = page.query_selector_all(".talalati-sor")
                 count_on_page = len(car_cards)
                 print(f"[INFO] Ads on page: {count_on_page}")
@@ -241,17 +280,16 @@ def run_scraper() -> None:
                 new_on_page = 0
                 updated_on_page = 0
                 
+                # Adatok kinyerése
                 for card in car_cards:
                     try:
                         car_data = extract_car_data(card)
                         if not car_data: continue
 
                         is_new = save_car_to_db(car_data)
-                        
                         if is_new: new_on_page += 1
                         else: updated_on_page += 1
                         total_saved += 1
-                        
                     except Exception:
                         continue
 
@@ -272,41 +310,40 @@ def run_scraper() -> None:
                     else:
                         success = True; break
                 else:
-                    print("Last page reached.")
+                    print("<P> Last page reached.")
                     success = True; break
                 
-                # Tiltás elleni védelem
-                time.sleep(2)
+                time.sleep(2) # Tiltás elleni védelem lapozáskoró
 
-                # Tartalom ellenőrzése
+                # Várakozás a következő oldal betöltésére
                 if not wait_for_content(page):
-                    print("FINAL TIMEOUT! Scraper stopped on this page.")
+                    print("<!> FINAL TIMEOUT! Scraper stopped on this page.")
                     log.status = f"TIMEOUT_ON_PAGE_{page_num}"
                     log.save()
                     break
-
+            
         except Exception as e:
-            print(f"Error occurred: {e}")
+            print(f"<P> Critical error occurred: {e}")
             log.status = f"CRITICAL_ERROR: {str(e)}"
-            success = False
+            log.save()
         finally:
-            print("Closing browser...")
+            print("<P> Closing the browser...")
             try:
                 browser.close()
             except:
                 pass
 
-    # Migráció indítása vagy Hiba lezárása
     if success:
         finalize_migration(log)
-        from ai.train import train_model 
-        train_model()
+        try:
+            train_model()
+        except Exception as e:
+            print(f"<!> Error starting AI training: {e}")
     else:
-        print("Error or interrupted execution! No data saved.")
+        print("<!> Error or interrupted execution! Check logs.")
         log.actual_scraped = DummyAd.objects.count()
         log.end_time = timezone.now()
         log.save()
 
 if __name__ == "__main__":
     run_scraper()
- 

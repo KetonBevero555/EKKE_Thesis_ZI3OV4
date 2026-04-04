@@ -101,7 +101,7 @@
                         <td>
                             {% if log.status == 'SUCCESS' %}
                                 <span class="badge bg-success">Sikeres</span>
-                            {% elif log.status == 'SCRAPER_STARTED' or log.status == 'FUT' or log.status == 'PENDING' %}
+                            {% elif log.status == 'SCRAPER_STARTED' or log.status == 'SCRAPING_IN_PROGRESS' or log.status == 'PENDING' %}
                                 <span class="badge bg-primary">Folyamatban</span>
                             {% else %}
                                 <span class="badge bg-danger text-wrap text-start" style="max-width: 350px;" title="{{ log.status }}">

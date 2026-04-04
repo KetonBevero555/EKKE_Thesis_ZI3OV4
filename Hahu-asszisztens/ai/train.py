@@ -17,7 +17,9 @@ django.setup()
 from ads.models import Ad, AILog
 
 def train_model():
-    print("Loading data from database...")
+    print("\n<M> Starting training process...")
+
+    print("<M> Loading data from database...")
     qs = Ad.objects.filter(
         price__isnull=False,
         year__isnull=False,
@@ -26,9 +28,9 @@ def train_model():
     ).values('price', 'brand', 'model', 'year', 'fuel', 'engine_cc', 'power_le', 'mileage')
 
     df = pd.DataFrame.from_records(qs)
-    print(f"Loaded number of cars: {len(df)} db")
+    print(f"<M> Loaded number of cars: {len(df)} cars")
 
-    print("Preparing data...")
+    print("<M> Preparing data...")
     df = df[(df['price'] > 200000) & (df['price'] < 100000000)]
     df['engine_cc'] = df['engine_cc'].fillna(df['engine_cc'].median())
     X = df.drop('price', axis=1)
@@ -53,10 +55,10 @@ def train_model():
     
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    print("Training model...")
+    print("<M> Training model...")
     model.fit(X_train, y_train)
 
-    print("Testing model...")
+    print("<M> Testing model...")
     y_pred = model.predict(X_test)
     
     mae = mean_absolute_error(y_test, y_pred)
@@ -67,7 +69,7 @@ def train_model():
     print(f"Model accuracy (R2 Score): {100*r2:.2f} %")
     print("======================================\n")
 
-    print("Saving model and logs...")
+    print("<M> Saving model and logs...")
     
     current_dir = os.path.dirname(os.path.abspath(__file__))
     models_dir = os.path.join(current_dir, 'models')
@@ -75,10 +77,10 @@ def train_model():
     model_path = os.path.join(models_dir, 'car_price_predictor.pkl')
     joblib.dump(model, model_path)
     
-    print(f"Training completed. Model saved to: {model_path}")
+    print(f"<M> Training completed. Model saved to: {model_path}")
     
     AILog.objects.create(mae=mae, r2_score=r2)
-    print("Log saved to AILog datatable.")
+    print("<M> Log saved to AILog datatable.")
 
 if __name__ == '__main__':
     train_model()
