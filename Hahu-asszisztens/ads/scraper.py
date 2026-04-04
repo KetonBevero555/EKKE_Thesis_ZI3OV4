@@ -185,8 +185,7 @@ def finalize_migration(log: ScrapeLog) -> None:
         log.end_time = timezone.now()
         log.save()
 
-# --- FŐ FOLYAMAT ---
-
+# Fő futtató metódus
 def run_scraper():
     print("--- STARTING SCRAPER ---")
     
@@ -213,7 +212,7 @@ def run_scraper():
     print(f"[*] Creating new profile folder here: {profile_dir}")
 
     try:
-        sb = sb_cdp.Chrome(user_data_dir=profile_dir, incognito=False, headless=False)
+        sb = sb_cdp.Chrome(user_data_dir=profile_dir, incognito=False, headless=True)
         endpoint = sb.get_endpoint_url()
         print(f"<P> Browser is running. Endpoint: {endpoint}")
     except Exception as e:
@@ -329,7 +328,8 @@ def run_scraper():
         finally:
             print("<P> Closing the browser...")
             try:
-                browser.close()
+                browser.close() # Playwright böngésző bezárása
+                sb.driver.quit() # SeleniumBase driver bezárása (Ha a Playwright nem zárta volna be az oldalt)
             except:
                 pass
 
