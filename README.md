@@ -9,8 +9,6 @@ A projekt fejlesztése és működése során kiemelt figyelmet kapott az etikus
 * **Publikus adatok:** A feldolgozott adatok bárki számára, bejelentkezés nélkül hozzáférhető, publikus adatok.
 * **Szerzői jogok tiszteletben tartása:** Etikai és jogi megfontolásokból ez a GitHub tároló **nem tartalmazza** a kinyert adatbázist, a betanított Mesterséges Intelligencia modellt, valamint a működéshez szükséges böngészőprofilokat. A repóban kizárólag a kutatáshoz írt forráskód található meg.
 
----
-
 ## Készítő
 - **Készítő:** Takács Márk
 - **Neptun kód:** ZI3OV4
@@ -21,8 +19,6 @@ AI alapú modern webalkalmazás fejlesztése
 
 ## Szakdolgozat célja
 Autó árbecslő, a Használtautó.hu adatai alapján betanított Mesterséges Intelligencia (MI) segítségével.
-
----
 
 ## Használt technológiák
 
@@ -45,8 +41,6 @@ Autó árbecslő, a Használtautó.hu adatai alapján betanított Mesterséges I
 * Scikit-Learn (Random Forest Regressor algoritmus, Pipeline, One-Hot Encoding)
 * Joblib (A betanított ML modell sorosítása és visszatöltése a webes kérésekhez)
 
----
-
 ## Adatgyűjtés és MI Tanítás
 
 Fontos technikai tudnivalók a futtatásról:
@@ -60,10 +54,10 @@ Teljes automatizáció: A folyamat emberi beavatkozást nem igényel. A szkript 
 ## Weboldalcímek
 
 http://127.0.0.1:8000/
-http://127.0.0.1:8000/dashboard/
-(Megjegyzés: /dashboard/ oldalra belépés szükséges a 6. pontban létrehozott admin profil segítségével.)
 
----
+http://127.0.0.1:8000/dashboard/
+
+(Megjegyzés: /dashboard/ oldalra belépés szükséges a 6. pontban létrehozott admin profil segítségével.)
 
 ## Projekt előkészítése a működéshez (Setup)
 
