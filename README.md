@@ -116,3 +116,9 @@ python manage.py runserver
 ```bash
 python ./Hahu-asszisztens/ads/scraper.py
 ```
+
+### Fontos megjegyzés a stabilitásról
+
+A kiterjedt tesztelések során tapasztalható volt, hogy az adatgyűjtő szkript (`scraper.py`) optimális hardveres és hálózati körülmények ellenére is megakadhat (pl. 100, 200 vagy akár 500 oldal feldolgozása után). A projekt commit története is tükrözi a stabilitás növelésére tett számos optimalizációs lépést, azonban fontos kiemelni, hogy ez a jelenség kódszinten nem küszöbölhető ki teljesen.
+
+A fagyások és időtúllépések (Timeout) oka magának a céloldalnak (**használtautó.hu**) a hálózati architektúrája. Az agresszív Cloudflare botvédelem, az IP-alapú forgalomkorlátozás (rate limiting), valamint a pillanatnyi szerveroldali mikro-szakadások mind közbeszólhatnak. Egy ilyen szigorúan védett, bonyolult és folyamatosan terhelt rendszerből történő egyidejű, nagy mennyiségű (több tízezer elemű) adatgyűjtés esetén ez a viselkedés technológiai szempontból természetes és elkerülhetetlen.
