@@ -7,7 +7,7 @@ Ez a projekt kizárólag **akadémiai, oktatási és kutatási célból** (egyet
 A projekt fejlesztése és működése során kiemelt figyelmet kapott az etikus adatkezelés:
 * **Személyes adatok védelme (GDPR):** A web-scraper algoritmus **egyetlen személyes adatot sem gyűjt**. Nevek, telefonszámok, pontos címek vagy egyéb azonosításra alkalmas adatok nem kerülnek letöltésre. A rendszer kizárólag a járművek nyilvánosan elérhető technikai paramétereit (márka, modell, évjárat, ár, stb.) rögzíti a listázó oldalakról.
 * **Publikus adatok:** A feldolgozott adatok bárki számára, bejelentkezés nélkül hozzáférhető, publikus adatok.
-* **Szerzői jogok tiszteletben tartása:** Etikai és jogi megfontolásokból ez a GitHub tároló **nem tartalmazza** a kinyert adatbázist, a betanított Mesterséges Intelligencia modellt, valamint a működéshez szükséges böngészőprofilokat. A repóban kizárólag a kutatáshoz írt forráskód található meg.
+* **Szerzői jogok tiszteletben tartása:** Etikai és jogi megfontolásokból ez a GitHub tároló **nem tartalmazza** a kinyert adatbázist, a betanított Mesterséges Intelligencia modellt, valamint a működéshez szükséges böngészőprofilokat.
 
 ## Készítő
 - **Készítő:** Takács Márk
