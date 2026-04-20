@@ -212,7 +212,7 @@ def run_scraper():
     print(f"[*] Creating new profile folder here: {profile_dir}")
 
     try:
-        sb = sb_cdp.Chrome(user_data_dir=profile_dir, incognito=False, headless=True)
+        sb = sb_cdp.Chrome(user_data_dir=profile_dir, incognito=False, headless=False)
         endpoint = sb.get_endpoint_url()
         print(f"<P> Browser is running. Endpoint: {endpoint}")
     except Exception as e:
@@ -253,6 +253,7 @@ def run_scraper():
             if not cookie_accepted:
                 print("<P> Cookie panel not found!")
 
+            time.sleep(3) # Várakozás a cookie panel eltűnésére
             print("<P> Clicking the 'Search' button...")
             search_btn = page.query_selector('[data-testid="submit-button"]')
             if search_btn:
@@ -269,6 +270,7 @@ def run_scraper():
             
             page_num = 1
             while True:
+                time.sleep(1) # Tiltás elleni védelem
                 print(f"\n--- PAGE {page_num} ---")
 
                 # Kártyák lekérése
@@ -279,6 +281,8 @@ def run_scraper():
                 new_on_page = 0
                 updated_on_page = 0
                 
+                time.sleep(0.5) # Tiltás elleni védelem
+
                 # Adatok kinyerése
                 for card in car_cards:
                     try:
@@ -291,6 +295,8 @@ def run_scraper():
                         total_saved += 1
                     except Exception:
                         continue
+                
+                time.sleep(0.5) # Tiltás elleni védelem
 
                 # Statisztika
                 print(f"[SAVE] Ads saved: {new_on_page}")
@@ -298,6 +304,8 @@ def run_scraper():
                     print(f"{Colors.YELLOW}[UPDATE] Updated ads: {updated_on_page} {Colors.RESET}")
                 print(f"[STATUS] Total saved: {total_saved} cars")
 
+                time.sleep(0.5) # Tiltás elleni védelem
+                
                 # Lapozás
                 next_li = page.query_selector("li.next")
                 if next_li and "disabled" not in (next_li.get_attribute("class") or ""):
@@ -312,14 +320,11 @@ def run_scraper():
                     print("<P> Last page reached.")
                     success = True; break
                 
-                time.sleep(2) # Tiltás elleni védelem lapozáskoró
+                time.sleep(1) # Tiltás elleni védelem
 
                 # Várakozás a következő oldal betöltésére
-                if not wait_for_content(page):
-                    print("<!> FINAL TIMEOUT! Scraper stopped on this page.")
-                    log.status = f"TIMEOUT_ON_PAGE_{page_num}"
-                    log.save()
-                    break
+                page.wait_for_selector(".talalati-sor", timeout=30000)
+                
             
         except Exception as e:
             print(f"<P> Critical error occurred: {e}")

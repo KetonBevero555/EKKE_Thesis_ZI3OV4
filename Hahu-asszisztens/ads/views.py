@@ -80,7 +80,7 @@ def dashboard(request):
     total_dummy = DummyAd.objects.count()
     latest_ai = AILog.objects.first()
     ai_accuracy_percent = latest_ai.r2_score * 100 if latest_ai and latest_ai.r2_score else 0
-    recent_scrapes = ScrapeLog.objects.order_by('-start_time')[:10]
+    recent_scrapes = ScrapeLog.objects.order_by('-start_time')[:20]
 
     context = {
         'total_ads': total_ads,
