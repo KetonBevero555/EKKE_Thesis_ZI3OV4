@@ -117,6 +117,15 @@ python manage.py runserver
 python ./Hahu-asszisztens/ads/scraper.py
 ```
 
+## Automata Tesztelés (Cypress)
+A frontend tesztek futtatásához kövesse az alábbi lépéseket:
+
+1. Lépjen be a teszt mappába: `cd Cypress-Teszt`
+2. Telepítse a függőségeket: `npm install`
+3. Futtassa a teszteket: 
+   - Vizuális felületen: `npx cypress open`
+   - Terminálban: `npx cypress run`
+
 ### Fontos megjegyzés a stabilitásról
 
 A kiterjedt tesztelések során tapasztalható volt, hogy az adatgyűjtő szkript (`scraper.py`) optimális hardveres és hálózati körülmények ellenére is megakadhat (pl. 100, 200 vagy akár 500 oldal feldolgozása után). A projekt commit története is tükrözi a stabilitás növelésére tett számos optimalizációs lépést, azonban fontos kiemelni, hogy ez a jelenség kódszinten nem küszöbölhető ki teljesen.

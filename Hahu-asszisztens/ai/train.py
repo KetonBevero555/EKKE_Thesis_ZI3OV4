@@ -31,7 +31,7 @@ def train_model():
     print(f"<M> Loaded number of cars: {len(df)} cars")
 
     print("<M> Preparing data...")
-    df = df[(df['price'] > 200000) & (df['price'] < 100000000)]
+    df = df[(df['price'] >= 0)]
     df['engine_cc'] = df['engine_cc'].fillna(df['engine_cc'].median())
     X = df.drop('price', axis=1)
     y = df['price']
@@ -45,9 +45,9 @@ def train_model():
             ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_features)
         ])
 
-    # --- A MODELL FELÉPÍTÉSE ---
-    # Random Forest algoritmust használunk 100 döntési fával (n_estimators=100)
-    # n_jobs=-1 azt jelenti, hogy a processzorod összes magját használja, hogy gyorsabb legyen
+    # MODELL FELÉPÍTÉSE
+    # Random Forest algoritmust használ 100 döntési fával (n_estimators=100)
+    # n_jobs=-1 azt jelenti, hogy a processzorod összes magját használja, hogy gyorsabb legyen a tanítás
     model = Pipeline(steps=[
         ('preprocessor', preprocessor),
         ('regressor', RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1))
