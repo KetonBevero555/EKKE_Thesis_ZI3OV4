@@ -7,9 +7,7 @@ Ez a projekt kizárólag **akadémiai, oktatási és kutatási célból** (egyet
 A projekt fejlesztése és működése során kiemelt figyelmet kapott az etikus adatkezelés:
 * **Személyes adatok védelme (GDPR):** A web-scraper algoritmus **egyetlen személyes adatot sem gyűjt**. Nevek, telefonszámok, pontos címek vagy egyéb azonosításra alkalmas adatok nem kerülnek letöltésre. A rendszer kizárólag a járművek nyilvánosan elérhető technikai paramétereit (márka, modell, évjárat, ár, stb.) rögzíti a listázó oldalakról.
 * **Publikus adatok:** A feldolgozott adatok bárki számára, bejelentkezés nélkül hozzáférhető, publikus adatok.
-* **Szerzői jogok tiszteletben tartása:** Etikai és jogi megfontolásokból ez a GitHub tároló **nem tartalmazza** a kinyert adatbázist, a betanított Mesterséges Intelligencia modellt, valamint a működéshez szükséges böngészőprofilokat. A repóban kizárólag a kutatáshoz írt forráskód található meg.
-
----
+* **Szerzői jogok tiszteletben tartása:** Etikai és jogi megfontolásokból ez a GitHub tároló **nem tartalmazza** a kinyert adatbázist, a betanított Mesterséges Intelligencia modellt, valamint a működéshez szükséges böngészőprofilokat.
 
 ## Készítő
 - **Készítő:** Takács Márk
@@ -21,8 +19,6 @@ AI alapú modern webalkalmazás fejlesztése
 
 ## Szakdolgozat célja
 Autó árbecslő, a Használtautó.hu adatai alapján betanított Mesterséges Intelligencia (MI) segítségével.
-
----
 
 ## Használt technológiák
 
@@ -45,8 +41,6 @@ Autó árbecslő, a Használtautó.hu adatai alapján betanított Mesterséges I
 * Scikit-Learn (Random Forest Regressor algoritmus, Pipeline, One-Hot Encoding)
 * Joblib (A betanított ML modell sorosítása és visszatöltése a webes kérésekhez)
 
----
-
 ## Adatgyűjtés és MI Tanítás
 
 Fontos technikai tudnivalók a futtatásról:
@@ -60,10 +54,10 @@ Teljes automatizáció: A folyamat emberi beavatkozást nem igényel. A szkript 
 ## Weboldalcímek
 
 http://127.0.0.1:8000/
-http://127.0.0.1:8000/dashboard/
-(Megjegyzés: /dashboard/ oldalra belépés szükséges a 6. pontban létrehozott admin profil segítségével.)
 
----
+http://127.0.0.1:8000/dashboard/
+
+(Megjegyzés: /dashboard/ oldalra belépés szükséges a 6. pontban létrehozott admin profil segítségével.)
 
 ## Projekt előkészítése a működéshez (Setup)
 
@@ -122,3 +116,9 @@ python manage.py runserver
 ```bash
 python ./Hahu-asszisztens/ads/scraper.py
 ```
+
+### Fontos megjegyzés a stabilitásról
+
+A kiterjedt tesztelések során tapasztalható volt, hogy az adatgyűjtő szkript (`scraper.py`) optimális hardveres és hálózati körülmények ellenére is megakadhat (pl. 100, 200 vagy akár 500 oldal feldolgozása után). A projekt commit története is tükrözi a stabilitás növelésére tett számos optimalizációs lépést, azonban fontos kiemelni, hogy ez a jelenség kódszinten nem küszöbölhető ki teljesen.
+
+A fagyások és időtúllépések (Timeout) oka magának a céloldalnak (**használtautó.hu**) a hálózati architektúrája. Az agresszív Cloudflare botvédelem, az IP-alapú forgalomkorlátozás (rate limiting), valamint a pillanatnyi szerveroldali mikro-szakadások mind közbeszólhatnak. Egy ilyen szigorúan védett, bonyolult és folyamatosan terhelt rendszerből történő egyidejű, nagy mennyiségű (több tízezer elemű) adatgyűjtés esetén ez a viselkedés technológiai szempontból természetes és elkerülhetetlen.
