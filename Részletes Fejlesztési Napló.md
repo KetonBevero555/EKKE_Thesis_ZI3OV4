@@ -130,4 +130,21 @@ Ha hiba volt vele milyen hibák voltak vele: Két komoly probléma is fellépett
 
 Mivel javítottam ki a hibákat: Rájöttem, hogy ha agresszíven blokkolom a képeket, az a Cloudflare számára egyértelmű "nem emberi" viselkedésnek tűnik. Így teljesen kivettem a képek blokkolását a fő folyamatból – a gép enélkül is elég gyorsan szedi az adatokat. A túl gyors lapozás problémáját pedig egy beépített 2 másodperces várakozással (`time.sleep(2)`) oldottam meg minden oldalozásnál, így a kérések tempója életszerűbbé vált a szerver felé.
 
-# Projekt készen áll...
+## Projekt készen áll...
+
+# Hasznaltauto.hu megváltozott, így módosítások szükségesek
+
+Stabilabbnak tűnik az új oldal.
+Scraper át lett alakítva az új oldal működésére.
++ A Chapcha már megoldja magát így ezzel nem kell foglalkozni.
++ Elkezdtek keretrendszert használni frontendre.
++ Minden tag megváltozott.
++ A legfontosabb, hogy a lapozáshoz végre generálhatom az URL-t és nem kell gombokat keresnem.
+
+Így, hogy folyamatosan átlépek egy másik oldalra nem fog betelni a böngésző memória.
+Rengetek alkalommal e miatt állt le a scraper, mert megtelt és nem bírt új oldalt betölteni.
+Emellett UI téren is kerültek be újítások.
++ A becslő gomb addig inaktív marad, amíg nincs minden mező helyesen kitöltve.
++ A mezők alá ki lett írva egy kis szöveg arról, hogy mekkora számot lehet egy adott mezőbe beírni, például Évjárat: legalább 1880.
++ A becslést ezres jegyre kerekítve adja vissza, mivel az az alatti számok irrelevánsak, például 5.237.542 Ft -> 5.237.000 Ft.
++ Becslés után az értékek nem tűnnek el, hanem visszatöltődnek a saját mezőikbe.

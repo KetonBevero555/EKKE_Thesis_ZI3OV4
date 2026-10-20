@@ -56,16 +56,16 @@
 
             <div class="card shadow-lg rounded-4 border-0 bg-white">
                 <div class="card-body p-4 p-md-5">
-                    <form method="POST">
+                    <form method="POST" id="predictorForm" data-model="{{ form_data.model|default:'' }}" data-fuel="{{ form_data.fuel|default:'' }}">
                         {% csrf_token %}
                         
                         <div class="row">
                             <div class="col-md-4 mb-4">
                                 <label class="form-label">Márka</label>
                                 <select name="brand" id="brandSelect" class="form-select form-select-lg rounded-3 custom-input" required>
-                                    <option value="" disabled selected>Válassz...</option>
+                                    <option value="" disabled {% if not form_data.brand %}selected{% endif %}>Válassz...</option>
                                     {% for b in brands %}
-                                        <option value="{{ b }}">{{ b }}</option>
+                                        <option value="{{ b }}" {% if b == form_data.brand %}selected{% endif %}>{{ b }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
@@ -98,24 +98,28 @@
                             </script>
                             <div class="col-md-6 mb-4">
                                 <label class="form-label">Évjárat</label>
-                                <input type="number" name="year" class="form-control form-control-lg rounded-3 custom-input" value="" placeholder="2015" min="1880" required>
+                                <input type="number" name="year" class="form-control form-control-lg rounded-3 custom-input" value="{{ form_data.year|default:'' }}" placeholder="2015" min="1880" required>
+                                <div class="form-text"><i class="bi bi-info-circle"></i> Minimum megadható évjárat: 1880</div>
                             </div>
                             
                             <div class="col-md-6 mb-4">
                                 <label class="form-label">Futásteljesítmény (km)</label>
-                                <input type="number" name="mileage" class="form-control form-control-lg rounded-3 custom-input" value="" placeholder="150000" min="0" required>
+                                <input type="number" name="mileage" class="form-control form-control-lg rounded-3 custom-input" value="{{ form_data.mileage|default:'' }}" placeholder="150000" min="0" required>
+                                <div class="form-text"><i class="bi bi-info-circle"></i> Legalább 0 km</div>
                             </div>
                         </div>
 
                         <div class="row">
                             <div class="col-md-6 mb-4">
                                 <label class="form-label">Hengerűrtartalom (cm³)</label>
-                                <input type="number" name="engine_cc" class="form-control form-control-lg rounded-3 custom-input" value="" placeholder="1600" min="500" required>
+                                <input type="number" name="engine_cc" class="form-control form-control-lg rounded-3 custom-input" value="{{ form_data.engine_cc|default:'' }}" placeholder="1600" min="500" required>
+                                <div class="form-text"><i class="bi bi-info-circle"></i> Legalább 500 cm³</div>
                             </div>
                             
                             <div class="col-md-6 mb-4">
                                 <label class="form-label">Teljesítmény (LE)</label>
-                                <input type="number" name="power_le" class="form-control form-control-lg rounded-3 custom-input" value="" placeholder="110" min="10" required>
+                                <input type="number" name="power_le" class="form-control form-control-lg rounded-3 custom-input" value="{{ form_data.power_le|default:'' }}" placeholder="110" min="10" required>
+                                <div class="form-text"><i class="bi bi-info-circle"></i> Legalább 10 LE</div>
                             </div>
                         </div>
 

@@ -84,7 +84,7 @@ def price_predictor(request):
             }])
 
             pred_value = model.predict(input_data)[0]
-            prediction = f"{int(pred_value):,} Ft".replace(',', ' ')
+            prediction = f"{round(int(pred_value), -3):,} Ft".replace(',', ' ')
             
         except Exception as e:
             error_msg = f"Hiba történt a becslés során: {str(e)}"
@@ -96,6 +96,7 @@ def price_predictor(request):
         'fuels': fuels,
         'ai_stat': latest_ai_stat,
         'ai_accuracy_percent': ai_accuracy_percent,
+        'form_data': request.POST if request.method == 'POST' else None,
     }
     
     return render(request, 'ads/predictor.html', context)

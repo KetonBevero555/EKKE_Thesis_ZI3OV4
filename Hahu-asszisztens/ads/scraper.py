@@ -25,10 +25,10 @@ class Colors:
     RESET = '\033[0m'
 
 # AdBlock (Kép és Média tiltása) aktiválása az adott oldalon
-def activate_adblock(page: any) -> None:
-    print("Blocking images and media...")
+def activate_imageblocker(page: any) -> None:
+    print("Blocking images...")
     def route_intercept(route: any) -> None:
-        if route.request.resource_type in ["image", "media"]:
+        if route.request.resource_type in ["image"]:
             route.abort()
         else:
             route.continue_()
@@ -43,19 +43,20 @@ def clean_price(text: str) -> int | None:
 
 # Technikai adatok (évjárat, üzemanyag, stb.) kinyerése
 def parse_tech_info(info_elements: list[str]) -> dict:
-    print
-    data = {'fuel': None, 'year': None, 'month': None, 'engine_cc': None, 'power_le': None, 'power_kw': None, 'mileage': None}
+    data = {'fuel': None, 'year': None, 'engine_cc': None, 'power_le': None, 'mileage': None}
     
     for item in info_elements:
         raw_text = item.strip().replace('\xa0', ' ')
         text_lower = raw_text.lower()
         
+        # Évjárat (pl: "2024" vagy "2015/05")
         if re.search(r'\d{4}/\d{1,2}', raw_text):
             parts = raw_text.split('/')
             data['year'] = int(re.sub(r'[^\d]', '', parts[0]))
-            data['month'] = int(re.sub(r'[^\d]', '', parts[1]))
         elif re.match(r'^\d{4}$', raw_text.strip(',')):
             data['year'] = int(re.sub(r'[^\d]', '', raw_text))
+            
+        # Üzemanyag
         elif 'benzin' in text_lower and 'lpg' not in text_lower:
             data['fuel'] = 'Benzin'
         elif 'dízel' in text_lower or 'diesel' in text_lower:
@@ -68,21 +69,25 @@ def parse_tech_info(info_elements: list[str]) -> dict:
             data['fuel'] = 'LPG'
         elif 'cng' in text_lower:
             data['fuel'] = 'CNG'
+            
+        # Hengerűrtartalom
         elif 'cm³' in raw_text:
             data['engine_cc'] = int(re.sub(r'[^\d]', '', raw_text))
-        elif 'kW' in raw_text:
-            data['power_kw'] = int(re.sub(r'[^\d]', '', raw_text.split('kW')[0]))
-        elif 'LE' in raw_text:
-            data['power_le'] = int(re.sub(r'[^\d]', '', raw_text.split('LE')[0]))
+            
+        # Kilométeróra (pl: "145 000 km")
         elif 'km' in raw_text and 'km-re' not in text_lower:
             data['mileage'] = int(re.sub(r'[^\d]', '', raw_text))
+            
+        # Teljesítmény
+        if 'LE' in raw_text:
+            data['power_le'] = int(re.sub(r'[^\d]', '', raw_text.split('LE')[0]))
             
     return data
 
 # Egyetlen autó adatainak kinyerése a HTML kártyából
 def extract_car_data(card: any) -> dict | None:
-    print("Extracting data from a car card...")
-    link_el = card.query_selector("h3 a")
+    print("Extracting data from an ad card...")
+    link_el = card.query_selector(".listing-card__title-link")
     if not link_el: return None
     
     full_url = link_el.get_attribute("href")
@@ -97,28 +102,25 @@ def extract_car_data(card: any) -> dict | None:
         model = parts[idx+2].replace('_', ' ').upper()
 
     # Árak & Bérlés
-    price_primary = card.query_selector(".pricefield-primary")
-    price_primary_highlight = card.query_selector(".pricefield-primary-highlighted")
-    raw_p = price_primary.inner_text() if price_primary else ""
-    raw_ph = price_primary_highlight.inner_text() if price_primary_highlight else ""
+    price_element = card.query_selector(".price__main")
+    raw_p = price_element.inner_text() if price_element else ""
     
     is_rentable = "bérelhető" in raw_p.lower()
     no_price = "ár nélkül" in raw_p.lower()
     if is_rentable or no_price:
         return None
         
-    final_price = clean_price(raw_p) if raw_p else clean_price(raw_ph)
+    final_price = clean_price(raw_p)
     if not final_price:
         return None
 
     # Tech adatok
-    info_spans = card.query_selector_all(".talalatisor-info.adatok span.info")
-    if not info_spans: info_spans = card.query_selector_all(".talalatisor-info span.info")
+    info_spans = card.query_selector_all(".highlighted-info__text")
     tech = parse_tech_info([span.inner_text() for span in info_spans])
 
     # Címkék
-    tag_spans = card.query_selector_all(".cimke-lista span.label")
-    unique_tags = sorted(list(set([t.inner_text() for t in tag_spans if t.inner_text().strip()])))
+    tag_spans = card.query_selector_all(".badge")
+    unique_tags = sorted(list(set([t.inner_text() for t in tag_spans if t.inner_text().strip() and "\n" not in t.inner_text()])))
     tags = "|".join(unique_tags)
 
     return {
@@ -144,15 +146,15 @@ def save_car_to_db(data: dict) -> bool:
 def finalize_migration(log: ScrapeLog) -> None:
     print("\n================================================")
     dummy_count = DummyAd.objects.count()
-    if dummy_count > 0:
-        print(f"SCRAPER FINISHED! Found {dummy_count} cars. Starting migration...")
+    if dummy_count > 80000:
+        print(f"SCRAPER FINISHED! Found {dummy_count} ads. Starting migration...")
         try:
             Ad.objects.all().delete()
             dummy_data = DummyAd.objects.values().exclude(id__isnull=True)
             new_ads = [Ad(**item) for item in dummy_data]
             Ad.objects.bulk_create(new_ads)
             final_ad_count = Ad.objects.count()
-            print(f"<P> -> Copied {final_ad_count} cars to the Ad table.")
+            print(f"<P> -> Copied {final_ad_count} ads to the Ad table.")
 
             DummyAd.objects.all().delete()
             log.status = "SUCCESS"
@@ -177,14 +179,16 @@ def finalize_migration(log: ScrapeLog) -> None:
 def run_scraper():
     run_setup()
 
-    print("--- STARTING SCRAPER ---")
-    
-    print("<P> Deleting old dummy data...")
+    print("--- PREPARING DATABASE ---")
+
+    print("<D> Deleting old dummy data...")
     DummyAd.objects.all().delete()
-    
-    print("<P> Creating new ScrapeLog entry...")
+
+    print("<D> Creating new ScrapeLog entry...")
     log = ScrapeLog.objects.create(status="SCRAPER_STARTED")
 
+    print("--- STARTING SCRAPER ---")
+    
     base_dir = os.path.dirname(os.path.abspath(__file__))
     profile_dir = os.path.join(base_dir, "chrome_profile")
 
@@ -206,49 +210,37 @@ def run_scraper():
             browser = p.chromium.connect_over_cdp(endpoint)
             context = browser.contexts[0]
             page = context.pages[0]
+            page_name = "https://www.hasznaltauto.hu/szemelyauto/"
+            activate_imageblocker(page)
 
-            print("<P> Starting the homepage...")
-            page.goto("https://www.hasznaltauto.hu/")
-            
-            print("<P> Waiting/Captcha verification...")
-            time.sleep(5) # Várakozás a teljes betöltődésre
-            sb.solve_captcha()
+            print(f"<P> Starting the page: {page_name}")
+            page.goto(page_name)
+            time.sleep(2) # Várakozás az oldal betöltődésére
 
-            time.sleep(3) # Várakozás a cookie panel eltűnésére
-            print("<P> Clicking the 'Search' button...")
-            search_btn = page.wait_for_selector('[data-testid="submit-button"]', state="visible", timeout=45000)
-            if search_btn:
-                search_btn.click()
+            if not page.wait_for_selector(".listing-card", timeout=10000):
+                raise Exception("Search results failed to load!")
                 
-                if not page.wait_for_selector(".talalati-sor", timeout=30000):
-                    raise Exception("Search results failed to load!")
-                    
-                print("<P> Search results loaded.\nProfile configured! Starting data extraction...")
-                log.status = "SCRAPING_IN_PROGRESS"
-                log.save()
-            else:
-                raise Exception("Search button missing!")
+            print("<P> Search results loaded.\nStarting data extraction...")
+            log.status = "SCRAPING_IN_PROGRESS"
+            log.save()
             
             page_num = 1
             while True:
-                time.sleep(1) # Timeout elleni védelem
                 print(f"\n--- PAGE {page_num} ---")
+                time.sleep(1) # Timeout védelem a túl gyors lekérések ellen
 
                 # Kártyák lekérése
-                car_cards = page.query_selector_all(".talalati-sor")
+                car_cards = page.query_selector_all(".listing-card")
                 count_on_page = len(car_cards)
                 print(f"[INFO] Ads on page: {count_on_page}")
                 
                 new_on_page = 0
                 updated_on_page = 0
-                
-                time.sleep(0.5) # Timeout elleni védelem
 
                 # Adatok kinyerése
                 for card in car_cards:
                     try:
                         car_data = extract_car_data(card)
-
                         if car_data is None: continue
 
                         is_new = save_car_to_db(car_data)
@@ -258,37 +250,34 @@ def run_scraper():
                             total_saved += 1
                         else: 
                             updated_on_page += 1
-                        
                     except Exception:
                         continue
 
-                # Statisztika
+                # Statisztika kiírása
                 print(f"[SAVE] Ads saved: {new_on_page}")
                 if updated_on_page > 0:
                     print(f"{Colors.YELLOW}[UPDATE] Updated ads: {updated_on_page} {Colors.RESET}")
-                print(f"[STATUS] Total saved: {total_saved} cars")
+                print(f"[STATUS] Total saved: {total_saved} ads")
 
-                time.sleep(0.5) # Timeout elleni védelem
+                # Kilépési feltételek ellenőrzése
+                if new_on_page == 0 and updated_on_page == 0:
+                    print("<P> Last useful page reached (Only missing prices / rentals left).")
+                    success = True
+                    break
 
-                # Lapozás
-                next_li = page.query_selector("li.next")
-                if (updated_on_page != 0 or new_on_page != 0) or (next_li and "disabled" not in (next_li.get_attribute("class") or "")):
-                    next_link = next_li.query_selector("a")
-                    if next_link:
-                        print(f"Go to page ({page_num + 1})...")
-                        next_link.click()
-                        page_num += 1
-                    else:
-                        success = True; break
-                else:
-                    print("<P> Last useful page reached.")
-                    success = True; break
-                
-                time.sleep(1) # Timeout elleni védelem
+                # URL generálása és betöltése
+                page_num += 1
+                url = f"https://www.hasznaltauto.hu/szemelyauto/page{page_num}"
+                try:
+                    page.goto(url)
+                    page.wait_for_selector(".listing-card", timeout=10000)
+                except Exception:
+                    print("<P> No ads found on this page (Timeout).")
+                    print("<P> Reached the end of the list.")
+                    if total_saved > 80000:
+                        success = True
+                    break
 
-                # Várakozás a következő oldal betöltésére
-                page.wait_for_selector(".talalati-sor", timeout=60000)
-                
         except Exception as e:
             print(f"<P> Critical error occurred: {e}")
             log.status = f"CRITICAL_ERROR: {str(e)}"
