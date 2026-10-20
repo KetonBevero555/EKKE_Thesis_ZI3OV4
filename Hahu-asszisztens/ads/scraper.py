@@ -227,7 +227,7 @@ def run_scraper():
             page_num = 1
             while True:
                 print(f"\n--- PAGE {page_num} ---")
-                time.sleep(1) # Timeout védelem a túl gyors lekérések ellen
+                time.sleep(2) # Timeout védelem a túl gyors lekérések ellen
 
                 # Kártyák lekérése
                 car_cards = page.query_selector_all(".listing-card")
