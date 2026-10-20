@@ -17,9 +17,9 @@ describe('Hahu-asszisztens Teljes E2E és Navigációs Tesztelés', () => {
   });
 
   it('2. Sikeres árbecslési folyamat (Első kör)', () => {
-    cy.get('#brandSelect').select('Mazda');
+    cy.get('#brandSelect').select('MAZDA');
     cy.wait(1000);
-    cy.get('#modelSelect').select('Cx-5');
+    cy.get('#modelSelect').select('CX-5');
     cy.wait(500);
     cy.get('#fuelSelect').select('Dízel');
 
@@ -37,8 +37,8 @@ describe('Hahu-asszisztens Teljes E2E és Navigációs Tesztelés', () => {
     cy.visit('http://127.0.0.1:8000/dashboard/');
     
     // Bejelentkezés
-    cy.get('input[name="username"]').type('ZI3OV4');
-    cy.get('input[name="password"]').type('secretpassword123');
+    cy.get('input[name="username"]').type(Cypress.env('username'));
+    cy.get('input[name="password"]').type(Cypress.env('admin_password'));
     cy.get('.submit-row > input').click();
 
     // B: Ellenőrizzük, hogy bejelentkezve már látszanak a statisztikák
@@ -55,9 +55,9 @@ describe('Hahu-asszisztens Teljes E2E és Navigációs Tesztelés', () => {
     // Most, hogy be vagyunk jelentkezve, a főoldalon is meg kell jelennie a Vezérlőpult gombnak!
     cy.get('.btn-outline-light').should('be.visible').and('contain', 'Vezérlőpult');
 
-    cy.get('#brandSelect').select('Ford');
+    cy.get('#brandSelect').select('FORD');
     cy.wait(1000);
-    cy.get('#modelSelect').select('Focus');
+    cy.get('#modelSelect').select('FOCUS');
     cy.wait(500);
     cy.get('#fuelSelect').select('Benzin');
 

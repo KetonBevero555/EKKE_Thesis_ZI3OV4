@@ -7,8 +7,11 @@ from django.conf import settings
 from django.http import JsonResponse
 from .models import Ad, AILog, ScrapeLog, DummyAd
 from django.contrib.admin.views.decorators import staff_member_required
+from django.views.decorators.http import require_GET
+import datetime
 
 # Keresés segítő, hogy a legördülőlistában csak valódi üzemanyag típusok jelenjenek meg
+@require_GET
 def get_fuels(request):
     brand = request.GET.get('brand')
     model = request.GET.get('model')
@@ -20,6 +23,7 @@ def get_fuels(request):
     return JsonResponse([], safe=False)
 
 # Keresés segítő, hogy a legördülőlistában csak valódi modellek jelenjenek meg
+@require_GET
 def get_models(request):
     brand = request.GET.get('brand')
     if brand:
@@ -29,6 +33,28 @@ def get_models(request):
 
 # Kommunikáció a frontenddel - Ő adja a paramétereket és kapja vissza a becslést - Ő felel a tájéokztatásért is az MI pontosságáról
 def price_predictor(request):
+    if request.method == 'POST':
+        try:
+            brand = request.POST.get('brand') # in Ad.brand
+            model = request.POST.get('model') # in Ad.model
+            fuel = request.POST.get('fuel') # in Ad.fuel
+            milage = int(request.POST.get('mileage')) # min 0
+            engine_cc = int(request.POST.get('engine_cc')) # min 500
+            power_le = int(request.POST.get('power_le')) # min 10
+
+            year = int(request.POST.get('year'))
+            current_year = datetime.date.today().year
+            
+            if year > current_year or year < 1880:
+                return render(request, 'ads/predictor.html', {
+                    'error': f'Az évjáratnak 1880 és {current_year} között kell lennie!'
+                })
+                
+        except (ValueError, TypeError):
+            return render(request, 'ads/predictor.html', {
+                'error': 'Kérjük, töltse ki az összes numerikus mezőt érvényes adatokkal!'
+            })
+
     prediction = None
     error_msg = None
     
@@ -74,6 +100,7 @@ def price_predictor(request):
     
     return render(request, 'ads/predictor.html', context)
 
+@require_GET
 @staff_member_required
 def dashboard(request):
     total_ads = Ad.objects.count()

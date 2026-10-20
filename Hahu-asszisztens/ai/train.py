@@ -4,7 +4,7 @@ import django
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import mean_absolute_error, r2_score
@@ -30,9 +30,11 @@ def train_model():
     df = pd.DataFrame.from_records(qs)
     print(f"<M> Loaded number of cars: {len(df)} cars")
 
-    print("<M> Preparing data...")
-    df = df[(df['price'] >= 0)]
+    print("<M> Preparing data and filtering outliers...")
+    df = df[(df['price'] >= 200000) & (df['price'] <= 10000000)]
+    
     df['engine_cc'] = df['engine_cc'].fillna(df['engine_cc'].median())
+    
     X = df.drop('price', axis=1)
     y = df['price']
     
@@ -41,13 +43,10 @@ def train_model():
 
     preprocessor = ColumnTransformer(
         transformers=[
-            ('num', 'passthrough', numeric_features),
+            ('num', StandardScaler(), numeric_features),
             ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_features)
         ])
 
-    # MODELL FELÉPÍTÉSE
-    # Random Forest algoritmust használ 100 döntési fával (n_estimators=100)
-    # n_jobs=-1 azt jelenti, hogy a processzorod összes magját használja, hogy gyorsabb legyen a tanítás
     model = Pipeline(steps=[
         ('preprocessor', preprocessor),
         ('regressor', RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1))

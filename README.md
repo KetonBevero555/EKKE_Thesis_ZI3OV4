@@ -1,133 +1,122 @@
-# Szakdolgozat
+# Hahu-Asszisztens: AI alapú gépjármű-árbecslő alkalmazás
 
 ## Jogi és Etikai Nyilatkozat (Disclaimer)
 
-Ez a projekt kizárólag **akadémiai, oktatási és kutatási célból** (egyetemi szakdolgozat) készült. Kereskedelmi forgalomba nem kerül, és semmilyen formában nem generál bevételt.
+Ez a projekt kizárólag **akadémiai és kutatási célból** készült.  
+Kereskedelmi forgalomba nem kerül, és semmilyen formában nem generál bevételt.
 
-A projekt fejlesztése és működése során kiemelt figyelmet kapott az etikus adatkezelés:
-* **Személyes adatok védelme (GDPR):** A web-scraper algoritmus **egyetlen személyes adatot sem gyűjt**. Nevek, telefonszámok, pontos címek vagy egyéb azonosításra alkalmas adatok nem kerülnek letöltésre. A rendszer kizárólag a járművek nyilvánosan elérhető technikai paramétereit (márka, modell, évjárat, ár, stb.) rögzíti a listázó oldalakról.
-* **Publikus adatok:** A feldolgozott adatok bárki számára, bejelentkezés nélkül hozzáférhető, publikus adatok.
-* **Szerzői jogok tiszteletben tartása:** Etikai és jogi megfontolásokból ez a GitHub tároló **nem tartalmazza** a kinyert adatbázist, a betanított Mesterséges Intelligencia modellt, valamint a működéshez szükséges böngészőprofilokat.
+### A fejlesztés során alkalmazott etikus adatgyűjtési irányelvek:
 
-## Készítő
-- **Készítő:** Takács Márk
-- **Neptun kód:** ZI3OV4
-- **Szak:** Programtervező informatikus BSc
+- **Adatminimalizálás (GDPR):**
+  A rendszer nem gyűjt személyes adatokat (nevek, telefonszámok, pontos címek).  
+  Kizárólag a hirdetések nyilvánosan elérhető műszaki paramétereit rögzíti.
 
-## Szakdolgozati téma
-AI alapú modern webalkalmazás fejlesztése
+- **Terheléskímélő lekérdezés (Rate Limiting):** 
+  A scraper modul beépített várakozási időkkel operál, hogy elkerülje a forrásoldal szervereinek túlterhelését.
 
-## Szakdolgozat célja
-Autó árbecslő, a Használtautó.hu adatai alapján betanított Mesterséges Intelligencia (MI) segítségével.
+- **Célhoz kötöttség:**  
+  A kinyert adatok kizárólag a **Random Forest Regressor** modell lokális tanítására és tudományos validációjára szolgálnak.
 
-## Használt technológiák
+## Fejlesztői megjegyzés a repozitórium tartalmáról
 
-**Frontend (Kliens oldal):**
-* HTML5, CSS3, JavaScript (AJAX a dinamikus űrlapokhoz)
-* Bootstrap 5 (Reszponzív dizájn, kártyák, UI elemek)
-* Bootstrap Icons (Letisztult, modern ikonográfia)
+A biztonsági és tárhelykezelési irányelvek miatt az alábbi fájlok **nem részei a tárolónak**, ezeket lokálisan kell létrehozni a futtatáshoz:
 
-**Backend (Szerver oldal):**
-* Python 3.13.3
-* Django (Webes keretrendszer, ORM, Adminisztrációs felület és Hitelesítés)
-* SQLite (Könnyűsúlyú, lokális relációs adatbázis)
+- `.env` → Django biztonsági beállítások (sablon: `.env.example`)
 
-**Adatgyűjtés és Automatizáció (Web Scraping):**
-* Playwright (Aszinkron, nagy sebességű webkaparás és tartalomkinyerés)
-* SeleniumBase (`sb_cdp` modul - Cloudflare és Captcha botvédelmek automatikus megkerülése)
+- `cypress.env.json` → Frontend teszt jelszó (sablon: `cypress.env.json.example`)
 
-**Mesterséges Intelligencia (Machine Learning & Data Science):**
-* Pandas (Adattisztítás, adatelőkészítés és kiugró értékek kezelése)
-* Scikit-Learn (Random Forest Regressor algoritmus, Pipeline, One-Hot Encoding)
-* Joblib (A betanított ML modell sorosítása és visszatöltése a webes kérésekhez)
+- `db.sqlite3` → Adatbázis fájl (automatikusan létrejön migráció során)
 
-## Adatgyűjtés és MI Tanítás
+- `node_modules/` → A Cypress futtatásához szükséges könyvtárak (telepítés: `npm install`)
 
-Fontos technikai tudnivalók a futtatásról:
+## Technológiai Stack
 
-Folyamat hossza: Az adatgyűjtés átlagosan 10-11 órát vesz igénybe, mert a használtautók.hu-t a CloudFlare védi és minden egyes oldalon egyesével kell végigmennie.
+**Backend:**
+- Python 3.13+
+- Django
+- SQLite (fejlesztési fázisban)
 
-Hálózati stabilitás: Kifejezetten ajánlott a stabil, vezetékes internetkapcsolat használata! A tesztelési fázisban bebizonyosodott, hogy a WiFi hálózatok apró, tizedmásodperces mikro-szakadásaiból adódóan a scraper több száz oldalnyi adatgyűjtés után időtúllépés (Timeout) miatt megállhat.
+**Adatgyűjtés:**
+- Playwright
+- SeleniumBase (sb_cdp mód)
 
-Teljes automatizáció: A folyamat emberi beavatkozást nem igényel. A szkript felépíti a tiszta böngészőprofilt, letölti a friss hirdetéseket, áttölti őket az éles adatbázisba, majd a legvégén automatikusan elindítja az MI modell újra-tanítását a legújabb árakkal.
+**Adattudomány:**
+- Scikit-learn (Random Forest)
+- Pandas
+- Joblib
 
-## Weboldalcímek
+**Tesztelés:**
+- Django Unit Tests (Backend)
+- Cypress (Frontend/E2E)
 
-http://127.0.0.1:8000/
+## Telepítés és Futtatás (Setup)
 
-http://127.0.0.1:8000/dashboard/
+### 1. Környezet előkészítése
 
-(Megjegyzés: /dashboard/ oldalra belépés szükséges a 6. pontban létrehozott admin profil segítségével.)
-
-## Projekt előkészítése a működéshez (Setup)
-
-Az alábbi lépésekkel a projekt a nulláról felállítható és futtatható bármilyen lokális (helyi) fejlesztői környezetben.
-
-### 1. A tároló (Repository) klónozása
-
-Nyisd meg a parancssort (Terminal / Git Bash / PowerShell) és klónozd vagy töltsd le a projektet a gépedre
-
-### 2. **(Nem kötelező)** Virtuális környezet (venv) létrehozása és aktiválása
-
-A virtuális környezet biztosítja, hogy a projekt csomagjai elszeparálva működjenek a géped többi Python csomagjától. Nyiss egy parancssort a projekt mappájában, és futtasd az alábbiakat:
+A `requirements.txt`-vel egy mappában kell lenni, hogy feltelepüljenek a python könyvtárak
 
 ```bash
-python -m venv venv
-venv\Scripts\activate
+
+pip install -r requirements.txt  
+playwright install chrome  
 ```
 
-### 3. Függőségek (Python csomagok) telepítése
+### 2. Konfigurációs fájlok beállítása
 
-Telepítsd a fejlesztéshez használt könyvtárakat a virtuális környezetbe az alábbi paranccsal:
+Másolja le a `.env.example` fájlt `.env` néven, és állítsa be a `DJANGO_SECRET_KEY` értékét.
+
+Lépjen a Cypress-Teszt mappába, és másolja le a `cypress.env.json.example` fájlt `cypress.env.json` néven, kitöltve a teszt jelszóval.
+
+### 3. Adatbázis és Adminisztráció
 
 ```bash
-pip install django pandas scikit-learn playwright seleniumbase joblib
+python manage.py makemigrations  
+python manage.py migrate  
+python manage.py createsuperuser  
 ```
-### 4. Böngésző követelmény
 
-Mivel az adatgyűjtő automatika (SeleniumBase) a rendszer natív böngészőjét használja, győződj meg róla, hogy a **Google Chrome** fel van telepítve a gépedre.
+### 4. Adatgyűjtés és Modellfrissítés
 
-### 5. Adatbázis felépítése (Migrációk)
-
-A Django tábláinak (DummyAd, Ad, ScrapeLog, AILog) létrehozása az SQLite adatbázisban:
+Az adatgyűjtő folyamat elindítása a projekt gyökeréből:
 
 ```bash
-python manage.py makemigrations ads
-python manage.py migrate
+python ads/scraper.py  
 ```
 
-### 6. Admin felhasználó létrehozása (Vezérlőpult eléréséhez)
+**Megjegyzés:**  
+A folyamat végén a rendszer automatikusan lefuttatja az MI modell újratanítását (`train.py`), mely során:
 
-A statisztikai felület és a privát Dashboard megtekintéséhez készíteni kell egy adminisztrátor fiókot:
+- numerikus skálázást alkalmaz (**StandardScaler**)  
+- outlier-szűrést végez (**200 000 Ft – 100 000 000 Ft** tartományban)
+
+### 5. Webalkalmazás indítása
 
 ```bash
-python manage.py createsuperuser
+python manage.py runserver  
 ```
 
-### 7. A webes szerver elindítása
+## Tesztelés
+
+**Backend tesztek:**  
 
 ```bash
-python manage.py runserver
+python manage.py test ads  
 ```
-(Megjegyzés: Mivel az adatbázis üres, így nem tud becslést adni és a /dashboard/ oldalon sem fognak megjelenni adatok.)
 
-### +1. Adatgyűjtés indítása és MI modell tanítása
+**Frontend (Cypress):**
 
 ```bash
-python ./Hahu-asszisztens/ads/scraper.py
+cd Cypress-Teszt  
+npm install  
+npx cypress run  
 ```
 
-## Automata Tesztelés (Cypress)
-A frontend tesztek futtatásához kövesse az alábbi lépéseket:
+## Technikai Korlátok és Stabilitás
 
-1. Lépjen be a teszt mappába: `cd Cypress-Teszt`
-2. Telepítse a függőségeket: `npm install`
-3. Futtassa a teszteket: 
-   - Vizuális felületen: `npx cypress open`
-   - Terminálban: `npx cypress run`
+Az adatgyűjtési sebesség az optimalizálások után elérte a ~7 s/oldal értéket.
 
-### Fontos megjegyzés a stabilitásról
+Fontos kiemelni, hogy a hálózati architektúra és a forrásoldali védelmi mechanizmusok miatt a folyamat során felléphetnek időtúllépések (Timeout).
 
-A kiterjedt tesztelések során tapasztalható volt, hogy az adatgyűjtő szkript (`scraper.py`) optimális hardveres és hálózati körülmények ellenére is megakadhat (pl. 100, 200 vagy akár 500 oldal feldolgozása után). A projekt commit története is tükrözi a stabilitás növelésére tett számos optimalizációs lépést, azonban fontos kiemelni, hogy ez a jelenség kódszinten nem küszöbölhető ki teljesen.
-
-A fagyások és időtúllépések (Timeout) oka magának a céloldalnak (**használtautó.hu**) a hálózati architektúrája. Az agresszív Cloudflare botvédelem, az IP-alapú forgalomkorlátozás (rate limiting), valamint a pillanatnyi szerveroldali mikro-szakadások mind közbeszólhatnak. Egy ilyen szigorúan védett, bonyolult és folyamatosan terhelt rendszerből történő egyidejű, nagy mennyiségű (több tízezer elemű) adatgyűjtés esetén ez a viselkedés technológiai szempontból természetes és elkerülhetetlen.
+A rendszer **hibatűrő**:
+- érvénytelen rekord → kihagyás  
+- nem várt HTML-struktúra → továbblépés
