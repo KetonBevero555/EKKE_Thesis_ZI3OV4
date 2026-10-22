@@ -134,6 +134,8 @@ Mivel javítottam ki a hibákat: Rájöttem, hogy ha agresszíven blokkolom a k�
 
 # Hasznaltauto.hu megváltozott, így módosítások szükségesek
 
+## 1. frissítés
+
 Stabilabbnak tűnik az új oldal.
 Scraper át lett alakítva az új oldal működésére.
 + A Chapcha már megoldja magát így ezzel nem kell foglalkozni.
@@ -148,3 +150,25 @@ Emellett UI téren is kerültek be újítások.
 + A mezők alá ki lett írva egy kis szöveg arról, hogy mekkora számot lehet egy adott mezőbe beírni, például Évjárat: legalább 1880.
 + A becslést ezres jegyre kerekítve adja vissza, mivel az az alatti számok irrelevánsak, például 5.237.542 Ft -> 5.237.000 Ft.
 + Becslés után az értékek nem tűnnek el, hanem visszatöltődnek a saját mezőikbe.
+
+## 2. frissítés
+
+Elkerülte a figyelmemet, hogy a Hahu hirdetések tag-jei közül hiányzik a hengerűrtartalom.
+A fejlesztők úgy döntöttek, hogy ezt az adatot már nem jelenítik meg a hirdetés-kártyákon.
+De nem gond, mert kommentek közé tettem azokat a részeket ahol ez megjelenik.
++ views.py-ba lett kommentelve nagyjából 2 helyen.
++ train.py-ba lett kommentelve nagyjából 4 helyen.
++ scraper.py-ból nem kellett kivenni, mert ha innen is kivenném többmindent kellene változtatnom.
++ predictor.html-ből sem került ki, mert akkkor át kellene alakítanom a weboldal kinézetét.
+
+Jobb benne hagyni, mert ha visszatennék a fejlesztők akkor csak ki kell törölni a kommenteket.
+Az MI pontossága nem változott sokat
++ Pontosság: 92,2% -> 91,8%
++ Hiba: 480.000 -> 490.000
+
+## 3. frissítés
+
+Előjött ugyan az a probléma leakad 700-900 oldal után.
+
+Ötlet: meg kell nézni hogy a 100. oldalon ugyan azok jelennek e meg mint mondjuk 5 perc múlva, ha igen akkor mondjuk 500 oldalanként újra kell nyitni a hahu-t.
+Refresh: egyenlőre 500 oldalanként újranyitja és visszamegy 50 oldalt ha újranyitja.

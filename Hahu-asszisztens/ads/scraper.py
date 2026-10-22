@@ -175,7 +175,7 @@ def finalize_migration(log: ScrapeLog) -> None:
         log.end_time = timezone.now()
         log.save()
 
-# Fő futtató metódus
+# Fő futtató függvény
 def run_scraper():
     run_setup()
 
@@ -192,104 +192,122 @@ def run_scraper():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     profile_dir = os.path.join(base_dir, "chrome_profile")
 
-    try:
-        sb = sb_cdp.Chrome(user_data_dir=profile_dir, incognito=False, headless=False)
-        endpoint = sb.get_endpoint_url()
-        print(f"<P> Browser is running. Endpoint: {endpoint}")
-    except Exception as e:
-        print(f"[!] Error starting browser: {e}")
-        log.status = f"CRITICAL_ERROR: Browser start failed: {e}"
-        log.save()
-        return
-
     success = False
     total_saved = 0
+    page_num = 1
+    
+    RESTART_LIMIT = 500
+    OVERLAP = 1
 
-    with sync_playwright() as p:
+    # KÜLSŐ CIKLUS - Böngésző kezelés, indítás, újrapróbálkozás
+    while not success:
+        sb = None
         try:
-            browser = p.chromium.connect_over_cdp(endpoint)
-            context = browser.contexts[0]
-            page = context.pages[0]
-            page_name = "https://www.hasznaltauto.hu/szemelyauto/"
-            activate_imageblocker(page)
-
-            print(f"<P> Starting the page: {page_name}")
-            page.goto(page_name)
-            time.sleep(2) # Várakozás az oldal betöltődésére
-
-            if not page.wait_for_selector(".listing-card", timeout=10000):
-                raise Exception("Search results failed to load!")
-                
-            print("<P> Search results loaded.\nStarting data extraction...")
-            log.status = "SCRAPING_IN_PROGRESS"
-            log.save()
+            # SeleniumBase indítása
+            sb = sb_cdp.Chrome(user_data_dir=profile_dir, incognito=False, headless=False)
+            endpoint = sb.get_endpoint_url()
+            print(f"<P> Browser is running. Endpoint: {endpoint}")
             
-            page_num = 1
-            while True:
-                print(f"\n--- PAGE {page_num} ---")
-                time.sleep(2) # Timeout védelem a túl gyors lekérések ellen
-
-                # Kártyák lekérése
-                car_cards = page.query_selector_all(".listing-card")
-                count_on_page = len(car_cards)
-                print(f"[INFO] Ads on page: {count_on_page}")
+            # Playwright csatlakozása
+            with sync_playwright() as p:
+                browser = p.chromium.connect_over_cdp(endpoint)
+                context = browser.contexts[0]
+                page = context.pages[0]
                 
-                new_on_page = 0
-                updated_on_page = 0
+                # URL generálása
+                start_url = f"https://www.hasznaltauto.hu/szemelyauto/page{page_num}"
 
-                # Adatok kinyerése
-                for card in car_cards:
-                    try:
-                        car_data = extract_car_data(card)
-                        if car_data is None: continue
+                print(f"<P> Starting the page: {start_url}")
+                page.goto(start_url)
 
-                        is_new = save_car_to_db(car_data)
+                if not page.wait_for_selector(".listing-card", timeout=60000):
+                    raise Exception("Search results failed to load!")
+                    
+                print("<P> Search results loaded.\nStarting data extraction...")
+                log.status = "SCRAPING_IN_PROGRESS"
+                log.save()
+                
+                pages_in_current_session = 0
 
-                        if is_new: 
-                            new_on_page += 1
-                            total_saved += 1
-                        else: 
-                            updated_on_page += 1
-                    except Exception:
-                        continue
+                # BELSŐ CIKLUS: Lapozás
+                while True:
+                    print(f"\n--- PAGE {page_num} ---")
 
-                # Statisztika kiírása
-                print(f"[SAVE] Ads saved: {new_on_page}")
-                if updated_on_page > 0:
-                    print(f"{Colors.YELLOW}[UPDATE] Updated ads: {updated_on_page} {Colors.RESET}")
-                print(f"[STATUS] Total saved: {total_saved} ads")
+                    # Kártyák lekérése
+                    car_cards = page.query_selector_all(".listing-card")
+                    count_on_page = len(car_cards)
+                    print(f"[INFO] Ads on page: {count_on_page}")
+                    
+                    new_on_page = 0
+                    updated_on_page = 0
 
-                # Kilépési feltételek ellenőrzése
-                if new_on_page == 0 and updated_on_page == 0:
-                    print("<P> Last useful page reached (Only missing prices / rentals left).")
-                    success = True
-                    break
+                    # Adatok kinyerése
+                    for card in car_cards:
+                        try:
+                            car_data = extract_car_data(card)
+                            if car_data is None: continue
 
-                # URL generálása és betöltése
-                page_num += 1
-                url = f"https://www.hasznaltauto.hu/szemelyauto/page{page_num}"
-                try:
-                    page.goto(url)
-                    page.wait_for_selector(".listing-card", timeout=10000)
-                except Exception:
-                    print("<P> No ads found on this page (Timeout).")
-                    print("<P> Reached the end of the list.")
-                    if total_saved > 80000:
+                            is_new = save_car_to_db(car_data)
+
+                            if is_new: 
+                                new_on_page += 1
+                                total_saved += 1
+                            else: 
+                                updated_on_page += 1
+                        except Exception:
+                            continue
+
+                    # Statisztika kiírása
+                    print(f"[SAVE] Ads saved: {new_on_page}")
+                    if updated_on_page > 0:
+                        print(f"{Colors.YELLOW}[UPDATE] Updated ads: {updated_on_page} {Colors.RESET}")
+                    print(f"[STATUS] Total saved: {total_saved} ads")
+
+                    # Kilépési feltételek ellenőrzése
+                    if new_on_page == 0 and updated_on_page == 0:
+                        print("<P> Last useful page reached (Only missing prices / rentals left).")
                         success = True
-                    break
+                        break
+
+                    # MEMÓRIA VÉDELEM: Újraindítási limit elérése
+                    pages_in_current_session += 1
+                    if pages_in_current_session >= RESTART_LIMIT:
+                        page_num = max(1, page_num - OVERLAP)
+                        print(f"<P> Restarting browser after {RESTART_LIMIT} pages.")
+                        break
+
+                    # URL generálása és betöltése
+                    page_num += 1
+                    url = f"https://www.hasznaltauto.hu/szemelyauto/page{page_num}"
+                    time.sleep(2.5) # Timeout védelem
+                    # Lapozás
+                    try:
+                        page.goto(url)
+                        page.wait_for_selector(".listing-card", timeout=60000)
+                    except Exception:
+                        print("<P> No ads found on this page (Can be Timeout).")
+                        if total_saved > 100_000:
+                            print("<P> Total saved ads exceeded 100,000. Stopping scraper.")
+                            success = True
+                        break
 
         except Exception as e:
             print(f"<P> Critical error occurred: {e}")
-            log.status = f"CRITICAL_ERROR: {str(e)}"
+            log.status = f"ERROR: {str(e)}"
             log.save()
+            
         finally:
-            print("<P> Closing the browser...")
+            print("<P> Closing the browser processes...")
+            # A Playwright és a SeleniumBase teljes kilövése a memória felszabadításáért
             try:
-                browser.close() # Playwright böngésző bezárása
-                sb.driver.quit() # SeleniumBase driver bezárása (Ha a Playwright nem zárta volna be az oldalt)
-            except:
-                pass
+                if 'browser' in locals(): browser.close()
+            except: pass
+            try:
+                if sb: sb.driver.quit()
+            except: pass
+            time.sleep(5) # Biztonsági timeout a böngésző teljes leállításához
 
+    # Végső mentés és AI modell indítása
     if success:
         finalize_migration(log)
         try:

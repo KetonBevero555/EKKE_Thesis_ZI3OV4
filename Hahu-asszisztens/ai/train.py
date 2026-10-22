@@ -25,7 +25,9 @@ def train_model():
         year__isnull=False,
         mileage__isnull=False,
         power_le__isnull=False
-    ).values('price', 'brand', 'model', 'year', 'fuel', 'engine_cc', 'power_le', 'mileage')
+    ).values('price', 'brand', 'model', 'year', 'fuel',
+             #'engine_cc', # <- Kommentelve, mert az új Hahu oldal nem tartalmazza
+             'power_le', 'mileage')
 
     df = pd.DataFrame.from_records(qs)
     print(f"<M> Loaded number of cars: {len(df)} cars")
@@ -33,13 +35,15 @@ def train_model():
     print("<M> Preparing data and filtering outliers...")
     df = df[(df['price'] >= 200000) & (df['price'] <= 10000000)]
     
-    df['engine_cc'] = df['engine_cc'].fillna(df['engine_cc'].median())
+    #df['engine_cc'] = df['engine_cc'].fillna(df['engine_cc'].median()) # <- Kommentelve, mert az új Hahu oldal nem tartalmazza
     
     X = df.drop('price', axis=1)
     y = df['price']
     
     categorical_features = ['brand', 'model', 'fuel']
-    numeric_features = ['year', 'engine_cc', 'power_le', 'mileage']
+    numeric_features = ['year',
+                        #'engine_cc', # <- Kommentelve, mert az új Hahu oldal nem tartalmazza
+                        'power_le', 'mileage']
 
     preprocessor = ColumnTransformer(
         transformers=[
@@ -63,10 +67,10 @@ def train_model():
     mae = mean_absolute_error(y_test, y_pred)
     r2 = r2_score(y_test, y_pred)
 
-    print("\n============ EREDMÉNYEK ============")
+    print("\n=========== MODEL ACCURACY ===========")
     print(f"Average mistake (MAE): {mae:,.0f} Ft")
     print(f"Model accuracy (R2 Score): {100*r2:.2f} %")
-    print("======================================\n")
+    print("========================================\n")
 
     print("<M> Saving model and logs...")
     
@@ -79,7 +83,7 @@ def train_model():
     print(f"<M> Training completed. Model saved to: {model_path}")
     
     AILog.objects.create(mae=mae, r2_score=r2)
-    print("<M> Log saved to AILog datatable.")
+    print("<M> Log finalized to AILog datatable.")
 
 if __name__ == '__main__':
     train_model()

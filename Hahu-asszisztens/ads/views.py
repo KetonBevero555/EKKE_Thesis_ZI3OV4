@@ -39,7 +39,7 @@ def price_predictor(request):
             model = request.POST.get('model') # in Ad.model
             fuel = request.POST.get('fuel') # in Ad.fuel
             milage = int(request.POST.get('mileage')) # min 0
-            engine_cc = int(request.POST.get('engine_cc')) # min 500
+            #engine_cc = int(request.POST.get('engine_cc')) # min 500 # <- Kommentelve, mert az új Hahu oldal nem tartalmazza
             power_le = int(request.POST.get('power_le')) # min 10
 
             year = int(request.POST.get('year'))
@@ -78,7 +78,7 @@ def price_predictor(request):
                 'model': request.POST.get('model'),
                 'year': int(request.POST.get('year', 2015)),
                 'fuel': request.POST.get('fuel'),
-                'engine_cc': int(request.POST.get('engine_cc', 1500)),
+                #'engine_cc': int(request.POST.get('engine_cc', 1500)), # <- Kommentelve, mert az új Hahu oldal nem tartalmazza
                 'power_le': int(request.POST.get('power_le', 100)),
                 'mileage': int(request.POST.get('mileage', 100000))
             }])
