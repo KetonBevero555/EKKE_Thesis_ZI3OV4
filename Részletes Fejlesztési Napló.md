@@ -172,3 +172,7 @@ Előjött ugyan az a probléma leakad 700-900 oldal után.
 
 Ötlet: meg kell nézni hogy a 100. oldalon ugyan azok jelennek e meg mint mondjuk 5 perc múlva, ha igen akkor mondjuk 500 oldalanként újra kell nyitni a hahu-t.
 Refresh: egyenlőre 500 oldalanként újranyitja és visszamegy 50 oldalt ha újranyitja.
+
+Refresh 2: úgy lett megírva az újraindítás, hogy ne csak 500 oldalanként induljon újra, hanem amíg meg nem kapja a "succees=True" (ami jelenleg 100.000 autó lementése) addig, ha esetleg timeout-ol, mert nem talált hirdetéseket az oldalon az sem baj, mert találtam más módszert rá, hogy bezárja ténylegesen a böngészőt és 5 másodperc múlva folytassa a [jelenlegi_oldal - 1]-dik oldalon egy másik böngésző ablakban.
+
+Egyedüli dolog, ami miatt nem tudok mit csinálni az az oldalra fagyás, mikor betölti az oldalt, de már timeout után és belefagy a folyamatba, mert nincs több memória a böngészőben. De ez a probléma az új scraper verzió óta egyszer sem jött elő. Csakis véletlenszerű timeout-ok voltak, amik böngésző újranyitással továbbfutottak.
