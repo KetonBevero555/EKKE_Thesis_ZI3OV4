@@ -151,6 +151,10 @@ Emellett UI téren is kerültek be újítások.
 + A becslést ezres jegyre kerekítve adja vissza, mivel az az alatti számok irrelevánsak, például 5.237.542 Ft -> 5.237.000 Ft.
 + Becslés után az értékek nem tűnnek el, hanem visszatöltődnek a saját mezőikbe.
 
+Adtam még egy esélyt a kép- és hirdetés-blokkolónak, de ez drasztikusan akár a 2,5-3-szorosára növelte egy oldal adatainak kigyűjtését. Ezt csinálhatta akár a weboldal botvédelme a CloudFlare, de akár csak az is lehetett, hogy több időt foglalkozott a hirdetések és a képek letiltásával folyamatosan, mint az adatgyűjtéssel.
+
+Konklúzió: Hirdetést és képet nem szabad letiltani, mert 2,5-3x annyi időbe telik egy oldalt kigyűjteni, mint ha nem blokkolnánk le őket. Ez egy oldalnál annyit számít, hogy nem 6 másodperc, hanem 15-18 másodpercig is tarthat egy oldal.
+
 ## 2. frissítés
 
 Elkerülte a figyelmemet, hogy a Hahu hirdetések tag-jei közül hiányzik a hengerűrtartalom.
@@ -175,4 +179,14 @@ Refresh: egyenlőre 500 oldalanként újranyitja és visszamegy 50 oldalt ha új
 
 Refresh 2: úgy lett megírva az újraindítás, hogy ne csak 500 oldalanként induljon újra, hanem amíg meg nem kapja a "succees=True" (ami jelenleg 100.000 autó lementése) addig, ha esetleg timeout-ol, mert nem talált hirdetéseket az oldalon az sem baj, mert találtam más módszert rá, hogy bezárja ténylegesen a böngészőt és 5 másodperc múlva folytassa a [jelenlegi_oldal - 1]-dik oldalon egy másik böngésző ablakban.
 
+Az újraindítások után visszaszámolt 50 oldal visszaszámolásának nem volt értelme, mert az első adatgyűjtésig elfelejtettem, hogy az oldal folyamatosan frissíti önmagát. Így ez visszacsökkent 1 oldalra, mert az a rövid időablak amíg ő újranyitja az oldalt bőven elég csak 1 oldalt visszamenni. Így sem tud minden autót leszedni az oldalról, nem is várom el tőle, mert óránként akár 100-200 hirdetés is megy fel-le, illetve cserélődhet.
+
 Egyedüli dolog, ami miatt nem tudok mit csinálni az az oldalra fagyás, mikor betölti az oldalt, de már timeout után és belefagy a folyamatba, mert nincs több memória a böngészőben. De ez a probléma az új scraper verzió óta egyszer sem jött elő. Csakis véletlenszerű timeout-ok voltak, amik böngésző újranyitással továbbfutottak.
+
+Letöltött hirdetések száma: 114.278 db
+
+Modell betanítva 110.799 autóval.
+
+Pontosság:
++ 493.950 Ft
++ 91,85%
