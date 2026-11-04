@@ -4,4 +4,6 @@ __pycache__/
 chrome_profile/
 **/chrome_profile/
 **/downloaded_files/
-ai/models/*
+ai/**models/
+ai/**backup_models/**
+**/catboost_info/

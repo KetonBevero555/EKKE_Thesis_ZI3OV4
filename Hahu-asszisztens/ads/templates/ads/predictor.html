@@ -34,11 +34,23 @@
             {% if ai_stat %}
             <div class="card shadow rounded-4 border-0 mb-4 bg-white">
                 <div class="card-body p-4 text-center">
-                    <h6 class="text-muted fw-bold mb-2 text-uppercase">Gép Aktuális Állapota</h6>
-                    <div class="d-flex justify-content-center gap-4 text-secondary flex-wrap">
-                        <span>Pontosság: <b class="text-dark">{{ ai_accuracy_percent|floatformat:2 }} %</b></span>
-                        <span>Átlagos tévedés: <b class="text-dark">~{{ ai_stat.mae }} Ft</b></span>
+                    <div id="stats-catboost" style="{% if selected_ai == 'random_forest' %}display: none;{% else %}display: block;{% endif %}">
+                        <h6 class="text-muted fw-bold mb-2 text-uppercase">CatBoost (v1.0) Aktuális Állapota</h6>
+                        <div class="d-flex justify-content-center gap-4 text-secondary flex-wrap">
+                            <span>Kiemelt döntési szempont: <b class="text-dark">Évjárat (32.9%)</b></span>
+                            <span>Másodlagos szempont: <b class="text-dark">Teljesítmény (22.3%)</b></span>
+                        </div>
                     </div>
+                    
+                    <!-- Random Forest Statisztika (Alapértelmezetten rejtve) -->
+                    <div id="stats-rf" style="{% if selected_ai == 'random_forest' %}display: block;{% else %}display: none;{% endif %}">
+                        <h6 class="text-muted fw-bold mb-2 text-uppercase">Random Forest (v1.4) Aktuális Állapota</h6>
+                        <div class="d-flex justify-content-center gap-4 text-secondary flex-wrap">
+                            <span>Pontosság: <b class="text-dark">{{ ai_accuracy_percent|floatformat:2 }} %</b></span>
+                            <span>Átlagos tévedés: <b class="text-dark">~{{ ai_stat.mae|floatformat:0 }} Ft</b></span>
+                        </div>
+                    </div>
+
                 </div>
             </div>
             {% endif %}
@@ -59,6 +71,17 @@
                     <form method="POST" id="predictorForm" data-model="{{ form_data.model|default:'' }}" data-fuel="{{ form_data.fuel|default:'' }}">
                         {% csrf_token %}
                         
+                        <div class="row justify-content-center mb-4 pb-3 border-bottom">
+                            <div class="col-md-8 text-center">
+                                <label class="form-label fw-bold text-primary">Melyik MI modellt használjuk?</label>
+                                <select name="ai_type" id="aiTypeSelect" class="form-select form-select-lg rounded-3 border-primary shadow-sm" onchange="toggleStats()">
+                                    <option value="catboost" {% if selected_ai == 'catboost' or not selected_ai %}selected{% endif %}>CatBoost Algoritmus (v1.0 - Ajánlott)</option>
+                                    <option value="random_forest" {% if selected_ai == 'random_forest' %}selected{% endif %}>Random Forest (v1.4 - Hagyományos)</option>
+                                </select>
+                                <div class="form-text mt-2"><i class="bi bi-info-circle"></i> A becslés pillanatában a kiválasztott algoritmus dolgozik majd.</div>
+                            </div>
+                        </div>
+
                         <div class="row">
                             <div class="col-md-4 mb-4">
                                 <label class="form-label">Márka</label>
@@ -144,6 +167,21 @@
 </div>
 
 <script src="{% static 'js/predictor.js' %}"></script>
+<script>
+    function toggleStats() {
+        var select = document.getElementById("aiTypeSelect");
+        var statsCB = document.getElementById("stats-catboost");
+        var statsRF = document.getElementById("stats-rf");
+        
+        if (select.value === "catboost") {
+            statsCB.style.display = "block";
+            statsRF.style.display = "none";
+        } else {
+            statsCB.style.display = "none";
+            statsRF.style.display = "block";
+        }
+    }
+</script>
 
 </body>
 </html>

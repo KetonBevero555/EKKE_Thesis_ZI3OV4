@@ -187,6 +187,20 @@ Letöltött hirdetések száma: 114.278 db
 
 Modell betanítva 110.799 autóval.
 
+Futásidő: 11 óra 32 perc.
+
+Kigyűjtött oldalak száma: 4612
+
 Pontosság:
 + 493.950 Ft
 + 91,85%
+
+## 4. frissítés
+
+Kipróbáltam egy új algoritmust a CatBoost-ot (CategoryBoost).
+Frissítve lettek a weboldalak is.
+A becslő oldalon ki lehet választani melyik modell becsüljön.
+Kicsit állítgattam a scraperen és a modellen.
+
+Az új modell még nem derült ki hogy pontosabban becsülni, viszont máshogyan működik így ennek nem pontossága, hanem súlyozásai vannak.
+Dashboard megmutatja a CatBoost súlyainak állapotát.

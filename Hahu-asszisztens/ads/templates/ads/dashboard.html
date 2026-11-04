@@ -26,19 +26,31 @@
     <h2 class="mb-4">Rendszer Statisztikák</h2>
 
     <div class="row mb-4">
-        <div class="col-md-4 mb-3">
+        <div class="col-md-3 mb-3">
             <div class="card shadow rounded-3 border-0 border-start border-primary border-5 h-100">
                 <div class="card-body p-4">
-                    <h6 class="text-muted fw-bold mb-1 text-uppercase">Legutóbbi Hirdetések Száma</h6>
-                    <h2 class="text-primary fw-bold mb-0">{{ total_ads }} <small class="text-muted fs-6">db</small></h2>
+                    <h6 class="text-muted fw-bold mb-1 text-uppercase">Historikus Adatbázis</h6>
+                    <h2 class="text-primary fw-bold mb-0">{{ total_ads }} <small class="text-muted fs-6">autó</small></h2>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3 mb-3">
+            <div class="card shadow rounded-3 border-0 border-start border-info border-5 h-100">
+                <div class="card-body p-4">
+                    <h6 class="text-muted fw-bold mb-1 text-uppercase">Feldolgozás Alatt</h6>
+                    <h2 class="text-info fw-bold mb-0">{{ total_dummy }} <small class="text-muted fs-6">hirdetés</small></h2>
+                    <div class="mt-2 pt-2 border-top">
+                        <small class="text-muted">DummyAds memória</small>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-md-4 mb-3">
+        <div class="col-md-3 mb-3">
             <div class="card shadow rounded-3 border-0 border-start border-warning border-5 h-100">
                 <div class="card-body p-4">
-                    <h6 class="text-muted fw-bold mb-1 text-uppercase">Legutóbbi MI Pontosság</h6>
+                    <h6 class="text-muted fw-bold mb-1 text-uppercase">MI Pontosság (R2)</h6>
                     <h2 class="text-warning fw-bold mb-0">
                         {% if latest_ai %}
                             {{ ai_accuracy_percent|floatformat:2 }} %
@@ -48,24 +60,58 @@
                     </h2>
                     {% if latest_ai %}
                     <div class="mt-2 pt-2 border-top">
-                        <small class="text-muted fw-bold">Frissítve: {{ latest_ai.created_at|date:"Y.m.d H:i" }}</small>
+                        <small class="text-muted fw-bold">Legutóbbi tanítás alapján</small>
                     </div>
                     {% endif %}
                 </div>
             </div>
         </div>
 
-        <div class="col-md-4 mb-3">
+        <div class="col-md-3 mb-3">
             <div class="card shadow rounded-3 border-0 border-start border-success border-5 h-100">
                 <div class="card-body p-4">
-                    <h6 class="text-muted fw-bold mb-1 text-uppercase">Legutóbbi Átlagos Tévedés</h6>
+                    <h6 class="text-muted fw-bold mb-1 text-uppercase">Átlagos Tévedés (MAE)</h6>
                     <h2 class="text-success fw-bold mb-0">
                         {% if latest_ai %}
-                            {{ latest_ai.mae }} Ft
+                            {{ latest_ai.mae|floatformat:0 }} Ft
                         {% else %}
                             N/A
                         {% endif %}
                     </h2>
+                     {% if latest_ai %}
+                    <div class="mt-2 pt-2 border-top">
+                        <small class="text-muted fw-bold">Modell hibahatára</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow rounded-3 border-0">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h5 class="mb-0 fw-bold">CatBoost Döntési Súlyozás (Feature Importance)</h5>
+                </div>
+                <div class="card-body p-4">
+                    <div class="row gy-3">
+                        {% for fi in feature_importances %}
+                        <div class="col-md-6">
+                            <div class="d-flex justify-content-between mb-1">
+                                <span>{{ fi.name }}</span>
+                                <span class="fw-bold">{{ fi.value }}%</span>
+                            </div>
+                            <div class="progress" style="height: 10px;">
+                                <div class="progress-bar bg-{{ fi.color }}" style="width: {{ fi.value|stringformat:'.1f' }}%"></div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="col-12 text-center text-muted">
+                            Nincs elérhető súlyozási adat (a CatBoost modell még nem futott le).
+                        </div>
+                        {% endfor %}
+                    </div>
                 </div>
             </div>
         </div>
@@ -73,7 +119,7 @@
 
     <div class="card shadow rounded-3 border-0">
     <div class="card-header bg-white py-3 border-bottom">
-        <h5 class="mb-0 fw-bold"> Utolsó 10 Adatgyűjtés (ScrapeLog)</h5>
+        <h5 class="mb-0 fw-bold"> Utolsó 20 Adatgyűjtés (ScrapeLog)</h5>
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">

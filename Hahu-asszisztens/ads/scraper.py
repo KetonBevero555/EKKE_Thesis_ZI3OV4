@@ -16,7 +16,7 @@ django.setup()
 
 # Modellek importálása
 from ads.models import DummyAd, ScrapeLog, Ad
-from ai.train import train_model
+from ai.train import train_models
 from ads.setup_profile import run_setup
 
 # Színek konzol kiíráshoz
@@ -147,16 +147,49 @@ def finalize_migration(log: ScrapeLog) -> None:
     print("\n================================================")
     dummy_count = DummyAd.objects.count()
     if dummy_count > 80000:
-        print(f"SCRAPER FINISHED! Found {dummy_count} ads. Starting migration...")
+        print(f"SCRAPER FINISHED! Found {dummy_count} ads. Starting update/insert...")
         try:
-            Ad.objects.all().delete()
-            dummy_data = DummyAd.objects.values().exclude(id__isnull=True)
-            new_ads = [Ad(**item) for item in dummy_data]
-            Ad.objects.bulk_create(new_ads)
-            final_ad_count = Ad.objects.count()
-            print(f"<P> -> Copied {final_ad_count} ads to the Ad table.")
+            if delete_old_data:
+                print("<P> Deleting old data from Ad table...")
+                Ad.objects.all().delete()
+                print("<P> Old data deleted.")
 
+            # Lekéri a létező hirdetéseket a memóriába a HAHU_ID alapján
+            existing_ads = {ad.hahu_id: ad for ad in Ad.objects.all()}
+            
+            new_ads_to_create = []
+            ads_to_update = []
+            dummy_data = DummyAd.objects.values().exclude(id__isnull=True)
+            
+            for item in dummy_data:
+                item.pop('id', None)
+                
+                hahu_id = item.get('hahu_id') 
+
+                # Ha már létezett a hirdetés, frissíti az árát és a kilométeróra állását
+                if hahu_id in existing_ads:
+                    ad_obj = existing_ads[hahu_id]
+                    ad_obj.price = item.get('price')
+                    ad_obj.mileage = item.get('mileage')
+                    ads_to_update.append(ad_obj)
+                # Ha teljesen új hirdetésről van szó, létrehoz egy új Ad objektumot
+                else:
+                    new_ads_to_create.append(Ad(**item))
+
+            # Adatbázis műveletek futtatása (gyorsított mentés csomagokban)
+            if new_ads_to_create:
+                Ad.objects.bulk_create(new_ads_to_create, batch_size=5000)
+            
+            if ads_to_update:
+                Ad.objects.bulk_update(ads_to_update, ['price', 'mileage'], batch_size=5000)
+
+            final_ad_count = Ad.objects.count()
+            print(f"<P> -> Added {len(new_ads_to_create)} new, updated {len(ads_to_update)} cars.")
+            print(f"<P> -> Total historical cars in DB: {final_ad_count}")
+
+            # Ideiglenes tábla ürítése
             DummyAd.objects.all().delete()
+            
             log.status = "SUCCESS"
             log.actual_scraped = final_ad_count
             log.end_time = timezone.now()
@@ -195,6 +228,8 @@ def run_scraper():
     success = False
     total_saved = 0
     page_num = 1
+    last_page_num = 1
+    emergency_stop = False
     
     RESTART_LIMIT = 500
     OVERLAP = 1
@@ -220,7 +255,7 @@ def run_scraper():
                 print(f"<P> Starting the page: {start_url}")
                 page.goto(start_url)
 
-                if not page.wait_for_selector(".listing-card", timeout=60000):
+                if not page.wait_for_selector(".listing-card", timeout=90000):
                     raise Exception("Search results failed to load!")
                     
                 print("<P> Search results loaded.\nStarting data extraction...")
@@ -283,7 +318,7 @@ def run_scraper():
                     # Lapozás
                     try:
                         page.goto(url)
-                        page.wait_for_selector(".listing-card", timeout=60000)
+                        page.wait_for_selector(".listing-card", timeout=90000)
                     except Exception:
                         print("<P> No ads found on this page (Can be Timeout).")
                         if total_saved > 100_000:
@@ -305,13 +340,29 @@ def run_scraper():
             try:
                 if sb: sb.driver.quit()
             except: pass
+
+            # Biztonsági timeout a scraper teljes leállításához
+            if page_num == last_page_num:
+                if emergency_stop:
+                    print("<P> Emergency stop triggered. Stopping scraper.")
+                    break
+                page_num += 1
+                last_page_num = page_num
+                print("<P> No progress detected. Retrying the next page...")
+                emergency_stop = True
+                print("[SCRAPER STATUS] Emergency stop activated.")
+            else:
+                emergency_stop = False
+                last_page_num = page_num
+
             time.sleep(5) # Biztonsági timeout a böngésző teljes leállításához
 
     # Végső mentés és AI modell indítása
     if success:
         finalize_migration(log)
         try:
-            train_model()
+            if train_models_after_scrape:
+                train_models()
         except Exception as e:
             print(f"<!> Error starting AI training: {e}")
     else:
@@ -321,4 +372,6 @@ def run_scraper():
         log.save()
 
 if __name__ == "__main__":
+    delete_old_data = False # Adatbázisban lévő régi hirdetések törlése a scraper futtatásakor
+    train_models_after_scrape = True # AI modellek újratanítása a scraper futtatása után
     run_scraper()

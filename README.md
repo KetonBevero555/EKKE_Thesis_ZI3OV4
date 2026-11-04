@@ -3,31 +3,24 @@
 ## Jogi és Etikai Nyilatkozat (Disclaimer)
 
 Ez a projekt kizárólag **akadémiai és kutatási célból** készült.  
-Kereskedelmi forgalomba nem kerül, és semmilyen formában nem generál bevételt.
+Kereskedelmi forgalomba nem kerül, és semmilyen formában nem generál bevételt. A dolgozat és a szoftver célja annak vizsgálata, hogy lehetséges-e pontos árbecslő modellt építeni pusztán a nyilvános alapjellemzők (évjárat, teljesítmény, stb.) alapján, a kvalitatív adatok (állapot, szerviztörténet) hiányában.
 
 ### A fejlesztés során alkalmazott etikus adatgyűjtési irányelvek:
 
-- **Adatminimalizálás (GDPR):**
-  A rendszer nem gyűjt személyes adatokat (nevek, telefonszámok, pontos címek).  
-  Kizárólag a hirdetések nyilvánosan elérhető műszaki paramétereit rögzíti.
-
-- **Terheléskímélő lekérdezés (Rate Limiting):** 
-  A scraper modul beépített várakozási időkkel operál, hogy elkerülje a forrásoldal szervereinek túlterhelését.
-
-- **Célhoz kötöttség:**  
-  A kinyert adatok kizárólag a **Random Forest Regressor** modell lokális tanítására és tudományos validációjára szolgálnak.
+- **Adatminimalizálás (GDPR):** A rendszer nem gyűjt személyes adatokat (nevek, telefonszámok, pontos címek). Kizárólag a hirdetések nyilvánosan elérhető műszaki paramétereit rögzíti.
+- **Terheléskímélő lekérdezés (Rate Limiting):** A scraper modul beépített várakozási időkkel operál, hogy elkerülje a forrásoldal szervereinek túlterhelését.
+- **Célhoz kötöttség:** A kinyert adatok kizárólag az AI modellek (**CatBoost** és **Random Forest**) lokális tanítására és tudományos validációjára szolgálnak.
 
 ## Fejlesztői megjegyzés a repozitórium tartalmáról
 
-A biztonsági és tárhelykezelési irányelvek miatt az alábbi fájlok **nem részei a tárolónak**, ezeket lokálisan kell létrehozni a futtatáshoz:
+A repozitórium tartalmazza a projekt futtatásához és teszteléséhez szükséges teljes forráskódot (backend, frontend, scraper, AI tanító szkriptek), valamint az előre feltöltött **adatbázist** (`db.sqlite3`), így a historikus hirdetési adatok azonnal rendelkezésre állnak.
 
-- `.env` → Django biztonsági beállítások (sablon: `.env.example`)
+**A repozitórium NEM tartalmazza az alábbiakat (ezeket lokálisan kell létrehozni vagy a kód generálja őket):**
 
-- `cypress.env.json` → Frontend teszt jelszó (sablon: `cypress.env.json.example`)
-
-- `db.sqlite3` → Adatbázis fájl (automatikusan létrejön migráció során)
-
-- `node_modules/` → A Cypress futtatásához szükséges könyvtárak (telepítés: `npm install`)
+- **`.env` fájl**: A rendszer biztonsági beállításai (a mellékelt `.env.example` alapján kell létrehozni).
+- **Betanított AI modellek** (`ai/models/`, `ai/backup_models/`): A nagy fájlméret miatt nem kerültek feltöltésre. A modellek (`.pkl` fájlok) az `ai/train.py` futtatásával lokálisan generálódnak le.
+- **Scraper munkakönyvtárak** (`chrome_profile/`, `downloaded_files/`): A böngésző munkamenet adatai, melyeket a rendszer az első adatgyűjtéskor automatikusan hoz létre.
+- **Futtatási környezet**: A virtuális környezet (`venv/`) és a futtatási gyorsítótárak (`__pycache__/`, `catboost_info/`).
 
 ## Technológiai Stack
 
@@ -40,9 +33,10 @@ A biztonsági és tárhelykezelési irányelvek miatt az alábbi fájlok **nem r
 - Playwright
 - SeleniumBase (sb_cdp mód)
 
-**Adattudomány:**
-- Scikit-learn (Random Forest)
-- Pandas
+**Adattudomány (Machine Learning):**
+- CatBoost (Elsődleges gradiens erősítő modell)
+- Scikit-learn (Random Forest, TransformedTargetRegressor)
+- Pandas & NumPy
 - Joblib
 
 **Tesztelés:**
@@ -51,43 +45,38 @@ A biztonsági és tárhelykezelési irányelvek miatt az alábbi fájlok **nem r
 
 ## Telepítés és Futtatás (Setup)
 
-### 1. Környezet előkészítése
-
-A `requirements.txt`-vel egy mappában kell lenni, hogy feltelepüljenek a python könyvtárak
+Az alábbi parancsokat a projekt mappájába belépve kell végrehajtani.
 
 ```bash
+cd .\Hahu-asszisztens\
+```
 
-pip install -r requirements.txt  
-playwright install chrome  
+### 1. Környezet előkészítése
+
+```bash
+pip install -r requirements.txt
+playwright install chrome
 ```
 
 ### 2. Konfigurációs fájlok beállítása
 
-Másolja le a `.env.example` fájlt `.env` néven, és állítsa be a `DJANGO_SECRET_KEY` értékét.
+Készítsen egy másolatot a `.env.example` fájlról `.env` néven, és állítsa be benne a `DJANGO_SECRET_KEY` értékét.
 
-Lépjen a Cypress-Teszt mappába, és másolja le a `cypress.env.json.example` fájlt `cypress.env.json` néven, kitöltve a teszt jelszóval.
+### 3. Adminisztrátor létrehozása
 
-### 3. Adatbázis és Adminisztráció
+A vezérlőpult elérésére szükség lesz egy fiókra. Ehhez elég csak a felhasználónevet és a jelszót megadni, az e-mail nem fontos hozzá.
 
 ```bash
-python manage.py makemigrations  
-python manage.py migrate  
 python manage.py createsuperuser  
 ```
 
-### 4. Adatgyűjtés és Modellfrissítés
+### 4. Modell létrehozása
 
-Az adatgyűjtő folyamat elindítása a projekt gyökeréből:
+A betanított AI modell mérete miatt nem része a feltöltött projektnek.
 
 ```bash
-python ads/scraper.py  
+python .\ai\train.py
 ```
-
-**Megjegyzés:**  
-A folyamat végén a rendszer automatikusan lefuttatja az MI modell újratanítását (`train.py`), mely során:
-
-- numerikus skálázást alkalmaz (**StandardScaler**)  
-- outlier-szűrést végez (**200 000 Ft – 100 000 000 Ft** tartományban)
 
 ### 5. Webalkalmazás indítása
 
@@ -97,7 +86,19 @@ python manage.py runserver
 
 ## Tesztelés
 
-**Backend tesztek:**  
+Az teszteléshez szükséges parancsokat két mappában lehet használni.
+
+Készítsen egy másolatot a `cypress.env.json.example` fájlról `cypress.env.json` néven, és állítsa be benne a `username` és az `admin_password` értékéit. Ezek az értékek a *superuser* adatai.
+
+**Backend tesztek:**
+
+Alábbi mappában lehet tesztelni a Backend-et.
+
+```bash
+cd .\Hahu-asszisztens\
+```
+
+Django tesztek futtatása.
 
 ```bash
 python manage.py test ads  
@@ -105,18 +106,23 @@ python manage.py test ads
 
 **Frontend (Cypress):**
 
+Alábbi mappában lehet tesztelni a Frontend-et.
+
 ```bash
-cd Cypress-Teszt  
+cd .\Cypress-Teszt\
+```
+
+Cypress tesztek futtatása.
+
+```bash
 npm install  
 npx cypress run  
 ```
 
-## Technikai Korlátok és Stabilitás
+## Technikai Korlátok és Rendszerstabilitás
 
-Az adatgyűjtési sebesség az optimalizálások után elérte a ~7 s/oldal értéket.
+A scraper modul architektúrája kifejezetten a hosszú távú stabilitásra és az adatintegritásra lett optimalizálva:
 
-Fontos kiemelni, hogy a hálózati architektúra és a forrásoldali védelmi mechanizmusok miatt a folyamat során felléphetnek időtúllépések (Timeout).
+Historikus adatmegőrzés (Upsert): Az adatbázis-frissítés memóriakímélő `bulk_create` és `bulk_update` logikát használ. A már eladott/levett autók megmaradnak a tanítóhalmazban, a meglévőknél pedig csak a változó adatok (ár, kilométeróra) frissülnek.
 
-A rendszer **hibatűrő**:
-- érvénytelen rekord → kihagyás  
-- nem várt HTML-struktúra → továbblépés
+Hibatűrés és Watchdog: Hálózati időtúllépések vagy védelmi mechanizmusok (pl. Cloudflare) esetén a rendszer automatikusan újrapróbálkozik. Ha a betöltés végleg elakad, egy "Circuit Breaker" mechanizmus biztonságosan leállítja a folyamatot, megakadályozva a memóriaszivárgást.
