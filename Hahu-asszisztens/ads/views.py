@@ -44,7 +44,7 @@ def price_predictor(request):
     fuels = Ad.objects.exclude(fuel="").values_list('fuel', flat=True).distinct().order_by('fuel')
 
     # Csak akkor próbálunk becsülni, ha tényleg rányomtak a "Becslés Indítása" gombra (van márka beküldve)
-    if request.method == 'POST' and request.POST.get('brand'):
+    if request.method == 'POST':
         try:
             brand = request.POST.get('brand')
             model = request.POST.get('model')
@@ -55,9 +55,16 @@ def price_predictor(request):
             year = int(request.POST.get('year'))
             
             current_year = datetime.date.today().year
-            
+
+            # Validációs ellenőrzések
             if year > current_year or year < 1880:
                 error_msg = f'Az évjáratnak 1880 és {current_year} között kell lennie!'
+            elif milage < 0:
+                error_msg = 'A futásteljesítmény nem lehet negatív!'
+            elif power_le < 10:
+                error_msg = 'A teljesítménynek legalább 10 lóerőnek kell lennie!'
+            #elif engine_cc < 500:
+                #error_msg = 'A hengerűrtartalom legalább 500 cm³-nek kell lennie!'
             else:
                 # MI modell kiválasztása
                 model_filename = 'RF_model.pkl' if selected_ai == 'random_forest' else 'CB_model.pkl'
@@ -83,7 +90,7 @@ def price_predictor(request):
                     error_msg = f"Hiba történt a becslés során: {str(e)}"
                     
         except (ValueError, TypeError):
-            error_msg = 'Kérjük, töltse ki az összes numerikus mezőt érvényes adatokkal!'
+            error_msg = 'Kérjük, töltse ki az összes mezőt érvényes adatokkal!'
 
     # Kontextus átadása egyetlen, biztonságos ponton
     context = {

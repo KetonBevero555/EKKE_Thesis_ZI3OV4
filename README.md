@@ -72,7 +72,7 @@ python manage.py createsuperuser
 
 ### 4. Modell létrehozása
 
-A betanított AI modell mérete miatt nem része a feltöltött projektnek.
+A betanított AI modell mérete miatt nem része a feltöltött projektnek. A tanítás **20-25 perc**et vesz igénybe
 
 ```bash
 python .\ai\train.py
@@ -84,6 +84,16 @@ python .\ai\train.py
 python manage.py runserver  
 ```
 
+### +1 Adatgyűjtés elindítása
+
+Az adatgyűjtés hossza a gyűjthető oldalak számától függ. Jelenleg **~4600 oldal**nyi adatgyűjtés **~12 óra**.
+
+```bash
+python .\ads\scraper.py
+```
+
+A kód testreszabható működést kínál. A `scraper.py` fájl legalján (az `if __name__ == "__main__":` blokkban) két paramétert is be lehet állítani. Ezeket `True` vagy `False` értékre lehet módosítani, de alapértelmezetten be vannak állítva az ajánlott működéshez.
+
 ## Tesztelés
 
 Az teszteléshez szükséges parancsokat két mappában lehet használni.
@@ -92,7 +102,7 @@ Készítsen egy másolatot a `cypress.env.json.example` fájlról `cypress.env.j
 
 **Backend tesztek:**
 
-Alábbi mappában lehet tesztelni a Backend-et.
+A projekt gyökeréből az alábbi mappában lehet tesztelni a Backend-et.
 
 ```bash
 cd .\Hahu-asszisztens\
@@ -106,7 +116,7 @@ python manage.py test ads
 
 **Frontend (Cypress):**
 
-Alábbi mappában lehet tesztelni a Frontend-et.
+A projekt gyökeréből az alábbi mappában lehet tesztelni a Frontend-et.
 
 ```bash
 cd .\Cypress-Teszt\

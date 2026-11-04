@@ -372,6 +372,8 @@ def run_scraper():
         log.save()
 
 if __name__ == "__main__":
-    delete_old_data = False # Adatbázisban lévő régi hirdetések törlése a scraper futtatásakor
-    train_models_after_scrape = True # AI modellek újratanítása a scraper futtatása után
+    # Adatbázisban lévő régi hirdetések törlése a scraper futtatásakor
+    delete_old_data = False
+    # AI modellek újratanítása a scraper futtatása után
+    train_models_after_scrape = True
     run_scraper()

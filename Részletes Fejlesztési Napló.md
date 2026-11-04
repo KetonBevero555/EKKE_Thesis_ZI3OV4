@@ -204,3 +204,11 @@ Kicsit állítgattam a scraperen és a modellen.
 
 Az új modell még nem derült ki hogy pontosabban becsülni, viszont máshogyan működik így ennek nem pontossága, hanem súlyozásai vannak.
 Dashboard megmutatja a CatBoost súlyainak állapotát.
+
+## 5. frissítés
+
+A teljes Cypress tesztelés át lett írva és szét lett bontva, sokkal részletesebb lett.
+Django Unit tesztek ellenőrizve, javítva és pontosítva lettek.
+Frissítve lett a requirements.txt függőségi lista is.
+views.py frissítve lett hibás POST kérések ellen. Mostmár hibás adatok esetén hibaüzenetet küld vissza.
+Readme pontosítás.
