@@ -26,9 +26,9 @@ class Colors:
 
 # AdBlock (Kép és Média tiltása) aktiválása az adott oldalon
 def activate_imageblocker(page: any) -> None:
-    print("Blocking images...")
+    print("Blocking images and media...")
     def route_intercept(route: any) -> None:
-        if route.request.resource_type in ["image"]:
+        if route.request.resource_type in ["image","media"]:
             route.abort()
         else:
             route.continue_()

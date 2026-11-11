@@ -52,7 +52,7 @@ def train_model_random_forest():
         ])
 
     # Logaritmikus pipeline
-    base_regressor = RandomForestRegressor(n_estimators=100, random_state=42, n_jobs=-1)
+    base_regressor = RandomForestRegressor(n_estimators=300, random_state=42, n_jobs=-1)
     
     model = Pipeline(steps=[
         ('preprocessor', preprocessor),
