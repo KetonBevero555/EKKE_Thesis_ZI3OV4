@@ -191,7 +191,7 @@ def finalize_migration(log: ScrapeLog) -> None:
             print(f"<P> -> Total historical cars in DB: {final_ad_count}")
 
             log.status = "SUCCESS"
-            log.actual_scraped = final_ad_count
+            log.actual_scraped = dummy_count
             log.end_time = timezone.now()
             log.save()
             print("<P> Log saved with SUCCESS status.")
