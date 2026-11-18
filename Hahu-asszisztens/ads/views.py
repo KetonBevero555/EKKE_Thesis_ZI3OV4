@@ -34,10 +34,36 @@ def get_models(request):
 
 # Kommunikáció a frontenddel - Ő adja a paramétereket és kapja vissza a becslést
 def price_predictor(request):
-    selected_ai = request.POST.get('ai_type', 'catboost') if request.method == 'POST' else 'catboost'
+    selected_ai = request.POST.get('ai_type', 'random_forest') if request.method == 'POST' else 'random_forest'
+    if selected_ai not in ['catboost', 'random_forest']:
+        selected_ai = 'random_forest'
     prediction = None
     error_msg = None
+
+    cb_top1_name, cb_top1_val = "Ismeretlen", 0.0
+    cb_top2_name, cb_top2_val = "Ismeretlen", 0.0
     
+    try:
+        cb_model_path = os.path.join(settings.BASE_DIR, 'ai', 'models', 'CB_model.pkl')
+        cb_model = joblib.load(cb_model_path)
+        importances = cb_model.get_feature_importance()
+        feature_names = cb_model.feature_names_
+        fi_list = sorted(zip(feature_names, importances), key=lambda x: x[1], reverse=True)
+        
+        translations = {
+            'year': 'Évjárat', 'power_le': 'Teljesítmény', 'mileage': 'Futásteljesítmény',
+            'brand': 'Márka', 'model': 'Modell', 'fuel': 'Üzemanyag'
+        }
+        
+        if len(fi_list) >= 1:
+            cb_top1_name = translations.get(fi_list[0][0], fi_list[0][0])
+            cb_top1_val = fi_list[0][1]
+        if len(fi_list) >= 2:
+            cb_top2_name = translations.get(fi_list[1][0], fi_list[1][0])
+            cb_top2_val = fi_list[1][1]
+    except Exception:
+        pass
+
     latest_ai_stat = AILog.objects.first()
     ai_accuracy_percent = latest_ai_stat.r2_score * 100 if latest_ai_stat and latest_ai_stat.r2_score else 0
     brands = Ad.objects.exclude(brand="").values_list('brand', flat=True).distinct().order_by('brand')
@@ -98,10 +124,16 @@ def price_predictor(request):
         'error_msg': error_msg,
         'brands': brands,
         'fuels': fuels,
+        'form_data': request.POST if request.method == 'POST' else None,
+        # RandomForest adatok
         'ai_stat': latest_ai_stat,
         'ai_accuracy_percent': ai_accuracy_percent,
-        'form_data': request.POST if request.method == 'POST' else None,
         'selected_ai': selected_ai,
+        # CatBoost adatok
+        'cb_top1_name': cb_top1_name,
+        'cb_top1_val': cb_top1_val,
+        'cb_top2_name': cb_top2_name,
+        'cb_top2_val': cb_top2_val,
     }
     
     return render(request, 'ads/predictor.html', context)

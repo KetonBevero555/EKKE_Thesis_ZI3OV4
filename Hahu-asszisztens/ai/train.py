@@ -142,7 +142,7 @@ def train_model_catboost():
     y_test_real = np.expm1(y_test)
     
     global_mae = mean_absolute_error(y_test_real, y_pred)
-    global_r2 = r2_score(y_test_real, y_pred)
+    global_r2 = r2_score(y_test, y_pred_log)
     
     # Statisztikák
     print('Statistics')

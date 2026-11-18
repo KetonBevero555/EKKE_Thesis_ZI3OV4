@@ -37,8 +37,8 @@
                     <div id="stats-catboost" style="{% if selected_ai == 'random_forest' %}display: none;{% else %}display: block;{% endif %}">
                         <h6 class="text-muted fw-bold mb-2 text-uppercase">CatBoost (v1.0) Aktuális Állapota</h6>
                         <div class="d-flex justify-content-center gap-4 text-secondary flex-wrap">
-                            <span>Kiemelt döntési szempont: <b class="text-dark">Évjárat (32.9%)</b></span>
-                            <span>Másodlagos szempont: <b class="text-dark">Teljesítmény (22.3%)</b></span>
+                            <span>Kiemelt döntési szempont: <b class="text-dark">{{ cb_top1_name }} ({{ cb_top1_val|floatformat:1 }}%)</b></span>
+                            <span>Másodlagos szempont: <b class="text-dark">{{ cb_top2_name }} ({{ cb_top2_val|floatformat:1 }}%)</b></span>
                         </div>
                     </div>
                     
@@ -75,8 +75,8 @@
                             <div class="col-md-8 text-center">
                                 <label class="form-label fw-bold text-primary">Melyik MI modellt használjuk?</label>
                                 <select name="ai_type" id="aiTypeSelect" class="form-select form-select-lg rounded-3 border-primary shadow-sm" onchange="toggleStats()">
-                                    <option value="catboost" {% if selected_ai == 'catboost' or not selected_ai %}selected{% endif %}>CatBoost Algoritmus (v1.0 - Ajánlott)</option>
-                                    <option value="random_forest" {% if selected_ai == 'random_forest' %}selected{% endif %}>Random Forest (v1.4 - Hagyományos)</option>
+                                    <option value="random_forest" {% if selected_ai == 'random_forest' or not selected_ai %}selected{% endif %}>Random Forest modell (v1.4)</option>
+                                    <option value="catboost" {% if selected_ai == 'catboost' %}selected{% endif %}>CatBoost modell (v1.0) - Tesztelés alatt!</option>
                                 </select>
                                 <div class="form-text mt-2"><i class="bi bi-info-circle"></i> A becslés pillanatában a kiválasztott algoritmus dolgozik majd.</div>
                             </div>

@@ -6,3 +6,4 @@ joblib>=1.5.3
 catboost>=1.2.10
 playwright>=1.57.0
 seleniumbase>=4.46.2
+python-dotenv>=1.2.1

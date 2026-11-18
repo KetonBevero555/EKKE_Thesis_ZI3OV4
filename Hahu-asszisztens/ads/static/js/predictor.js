@@ -12,34 +12,23 @@ document.addEventListener('DOMContentLoaded', function() {
     const savedModel = form ? form.getAttribute('data-model') : '';
     const savedFuel = form ? form.getAttribute('data-fuel') : '';
 
-    // Egyedi validációs üzenetek beállítása minden input mezőre
-    function updateCustomValidationMessages() {
-        inputs.forEach(input => {
-            if (input.validity.valueMissing) {
-                if (input.tagName === 'SELECT') {
-                    input.setCustomValidity('Kérjük, válasszon a listából!');
-                } else {
-                    input.setCustomValidity('Kérjük, töltse ki ezt a mezőt!');
-                }
-            } else if (input.validity.rangeUnderflow) {
-                input.setCustomValidity('Az érték nem lehet kisebb, mint ' + input.min + '!');
-            } else if (input.validity.rangeOverflow) {
-                input.setCustomValidity('Az érték nem lehet nagyobb, mint ' + input.max + '!');
-            } else {
-                input.setCustomValidity(''); 
-            }
-        });
-    }
-
-    // Ellenőrizzük a form érvényességét és engedélyezzük vagy letiltjuk a submit gombot
+    // Ellenőrizzük a form érvényességét, és csak a gomb tiltásával/engedélyezésével foglalkozunk
     function checkFormValidity() {
         if (!submitBtn) return;
-        updateCustomValidationMessages(); 
 
         let isValid = true;
         inputs.forEach(input => {
-            if (input.disabled || input.value === "" || !input.checkValidity()) {
-                isValid = false;
+            if (input.disabled) {
+                // Ha a mező le van tiltva, az alapból blokkolja a gombot (pl. mert még tölt a modell/üzemanyag lista)
+                // KIVÉVE: Ha a hengerűrtartalomról van szó, mert azt 'Elektromos' üzemanyagnál szándékosan tiltjuk le!
+                if (input.name !== 'engine_cc') {
+                    isValid = false;
+                }
+            } else {
+                // Ha a mező aktív, akkor ki kell lennie töltve, és meg kell felelnie a HTML szabályoknak (pl. min/max értékek)
+                if (input.value === "" || !input.checkValidity()) {
+                    isValid = false;
+                }
             }
         });
         
@@ -47,17 +36,30 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (submitBtn) submitBtn.disabled = true;
-    updateCustomValidationMessages();
 
+    // Eseményfigyelők az inputokra
     inputs.forEach(input => {
         input.addEventListener('input', checkFormValidity);
         input.addEventListener('change', checkFormValidity);
-        input.addEventListener('invalid', function() {
-            updateCustomValidationMessages();
-        });
     });
 
     if (form) form.addEventListener('change', checkFormValidity);
+
+    // Hengerűrtartalom mező kezelése "Elektromos" üzemanyag esetén
+    if (fuelSelect) {
+        fuelSelect.addEventListener('change', function() {
+            const engineInput = document.querySelector('input[name="engine_cc"]');
+            if (this.value === 'Elektromos') {
+                engineInput.disabled = true;
+                engineInput.value = '';
+                engineInput.placeholder = 'Elektromosnál nem szükséges';
+            } else {
+                engineInput.disabled = false;
+                engineInput.placeholder = '1600';
+            }
+            checkFormValidity();
+        });
+    }
 
     // Dinamikus modellbetöltés a márka kiválasztása után
     function loadModels(brand, autoSelectModel = '') {
@@ -79,7 +81,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 modelSelect.disabled = false;
                 
-                // Ha van visszatöltendő modellünk, kiválasztjuk, majd indítjuk az üzemanyagok betöltését
+                // Ha van visszatöltendő modellünk
                 if (autoSelectModel && data.includes(autoSelectModel)) {
                     modelSelect.value = autoSelectModel;
                     loadFuels(brand, autoSelectModel, savedFuel);
@@ -107,9 +109,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 fuelSelect.disabled = false;
                 
-                // Ha van visszatöltendő üzemanyagunk, kiválasztjuk
+                // Ha van visszatöltendő üzemanyagunk
                 if (autoSelectFuel && data.includes(autoSelectFuel)) {
                     fuelSelect.value = autoSelectFuel;
+                    // Manuálisan indítunk egy 'change' eseményt, hogy ha visszatöltöttük az "Elektromost", akkor rögtön tiltsa le a ccm-t
+                    fuelSelect.dispatchEvent(new Event('change'));
                 }
                 checkFormValidity();
             })
@@ -125,7 +129,7 @@ document.addEventListener('DOMContentLoaded', function() {
         loadFuels(brandSelect.value, this.value);
     });
 
-    // Ha a Django már kiválasztott egy márkát, azonnal lekérjük a hozzá tartozó modelleket
+    // Ha a Django már kiválasztott egy márkát
     if (brandSelect.value) {
         loadModels(brandSelect.value, savedModel);
     }

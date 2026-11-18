@@ -7,6 +7,7 @@ import re
 from django.utils import timezone
 from playwright.sync_api import sync_playwright
 from seleniumbase import sb_cdp
+from django.db import transaction
 
 # Konfiguráció
 os.environ["DJANGO_ALLOW_ASYNC_UNSAFE"] = "true"
@@ -79,9 +80,12 @@ def parse_tech_info(info_elements: list[str]) -> dict:
             data['mileage'] = int(re.sub(r'[^\d]', '', raw_text))
             
         # Teljesítmény
-        if 'LE' in raw_text:
-            data['power_le'] = int(re.sub(r'[^\d]', '', raw_text.split('LE')[0]))
-            
+        elif 'LE' in raw_text:
+            match = re.search(r'(\d+)\s*LE', raw_text)
+            if match:
+                data['power_le'] = int(match.group(1))
+
+    print(f"Parsed technical info: {data}")
     return data
 
 # Egyetlen autó adatainak kinyerése a HTML kártyából
@@ -146,50 +150,46 @@ def save_car_to_db(data: dict) -> bool:
 def finalize_migration(log: ScrapeLog) -> None:
     print("\n================================================")
     dummy_count = DummyAd.objects.count()
+    
     if dummy_count > 80000:
         print(f"SCRAPER FINISHED! Found {dummy_count} ads. Starting update/insert...")
         try:
-            if delete_old_data:
-                print("<P> Deleting old data from Ad table...")
-                Ad.objects.all().delete()
-                print("<P> Old data deleted.")
+            with transaction.atomic():
+                if delete_old_data:
+                    print("<P> Deleting old data from Ad table...")
+                    Ad.objects.all().delete()
+                    print("<P> Old data deleted.")
 
-            # Lekéri a létező hirdetéseket a memóriába a HAHU_ID alapján
-            existing_ads = {ad.hahu_id: ad for ad in Ad.objects.all()}
-            
-            new_ads_to_create = []
-            ads_to_update = []
-            dummy_data = DummyAd.objects.values().exclude(id__isnull=True)
-            
-            for item in dummy_data:
-                item.pop('id', None)
+                existing_ads = {ad.hahu_id: ad for ad in Ad.objects.all()}
                 
-                hahu_id = item.get('hahu_id') 
+                new_ads_to_create = []
+                ads_to_update = []
+                dummy_data = DummyAd.objects.values().exclude(id__isnull=True)
+                
+                for item in dummy_data:
+                    item.pop('id', None)
+                    hahu_id = item.get('hahu_id') 
 
-                # Ha már létezett a hirdetés, frissíti az árát és a kilométeróra állását
-                if hahu_id in existing_ads:
-                    ad_obj = existing_ads[hahu_id]
-                    ad_obj.price = item.get('price')
-                    ad_obj.mileage = item.get('mileage')
-                    ads_to_update.append(ad_obj)
-                # Ha teljesen új hirdetésről van szó, létrehoz egy új Ad objektumot
-                else:
-                    new_ads_to_create.append(Ad(**item))
+                    if hahu_id in existing_ads:
+                        ad_obj = existing_ads[hahu_id]
+                        ad_obj.price = item.get('price')
+                        ad_obj.mileage = item.get('mileage')
+                        ads_to_update.append(ad_obj)
+                    else:
+                        new_ads_to_create.append(Ad(**item))
 
-            # Adatbázis műveletek futtatása (gyorsított mentés csomagokban)
-            if new_ads_to_create:
-                Ad.objects.bulk_create(new_ads_to_create, batch_size=5000)
+                if new_ads_to_create:
+                    Ad.objects.bulk_create(new_ads_to_create, batch_size=5000)
+                
+                if ads_to_update:
+                    Ad.objects.bulk_update(ads_to_update, ['price', 'mileage'], batch_size=5000)
+
+                DummyAd.objects.all().delete()
             
-            if ads_to_update:
-                Ad.objects.bulk_update(ads_to_update, ['price', 'mileage'], batch_size=5000)
-
             final_ad_count = Ad.objects.count()
             print(f"<P> -> Added {len(new_ads_to_create)} new, updated {len(ads_to_update)} cars.")
             print(f"<P> -> Total historical cars in DB: {final_ad_count}")
 
-            # Ideiglenes tábla ürítése
-            DummyAd.objects.all().delete()
-            
             log.status = "SUCCESS"
             log.actual_scraped = final_ad_count
             log.end_time = timezone.now()
@@ -375,5 +375,5 @@ if __name__ == "__main__":
     # Adatbázisban lévő régi hirdetések törlése a scraper futtatásakor
     delete_old_data = False
     # AI modellek újratanítása a scraper futtatása után
-    train_models_after_scrape = True
+    train_models_after_scrape = False
     run_scraper()
