@@ -31,6 +31,9 @@
                 <div class="card-body p-4">
                     <h6 class="text-muted fw-bold mb-1 text-uppercase">Historikus Adatbázis</h6>
                     <h2 class="text-primary fw-bold mb-0">{{ total_ads }} <small class="text-muted fs-6">autó</small></h2>
+                    <div class="mt-2 pt-2 border-top">
+                        <small class="text-muted fw-bold">Ad adattábla tartalma</small>
+                    </div>
                 </div>
             </div>
         </div>
@@ -41,7 +44,7 @@
                     <h6 class="text-muted fw-bold mb-1 text-uppercase">Feldolgozás Alatt</h6>
                     <h2 class="text-info fw-bold mb-0">{{ total_dummy }} <small class="text-muted fs-6">hirdetés</small></h2>
                     <div class="mt-2 pt-2 border-top">
-                        <small class="text-muted">DummyAds memória</small>
+                        <small class="text-muted fw-bold">DummyAd adattábla tartalma</small>
                     </div>
                 </div>
             </div>
@@ -50,7 +53,7 @@
         <div class="col-md-3 mb-3">
             <div class="card shadow rounded-3 border-0 border-start border-warning border-5 h-100">
                 <div class="card-body p-4">
-                    <h6 class="text-muted fw-bold mb-1 text-uppercase">MI Pontosság (R2)</h6>
+                    <h6 class="text-muted fw-bold mb-1 text-uppercase">RF - PONTOSSÁG (R²)</h6>
                     <h2 class="text-warning fw-bold mb-0">
                         {% if latest_ai %}
                             {{ ai_accuracy_percent|floatformat:2 }} %
@@ -70,7 +73,7 @@
         <div class="col-md-3 mb-3">
             <div class="card shadow rounded-3 border-0 border-start border-success border-5 h-100">
                 <div class="card-body p-4">
-                    <h6 class="text-muted fw-bold mb-1 text-uppercase">Átlagos Tévedés (MAE)</h6>
+                    <h6 class="text-muted fw-bold mb-1 text-uppercase">RF - ÁTLAGOS HIBA (MAE)</h6>
                     <h2 class="text-success fw-bold mb-0">
                         {% if latest_ai %}
                             {{ latest_ai.mae|floatformat:0 }} Ft
@@ -80,7 +83,7 @@
                     </h2>
                      {% if latest_ai %}
                     <div class="mt-2 pt-2 border-top">
-                        <small class="text-muted fw-bold">Modell hibahatára</small>
+                        <small class="text-muted fw-bold">Tanítás során mért átlagos hiba</small>
                     </div>
                     {% endif %}
                 </div>
@@ -92,7 +95,7 @@
         <div class="col-12">
             <div class="card shadow rounded-3 border-0">
                 <div class="card-header bg-white py-3 border-bottom">
-                    <h5 class="mb-0 fw-bold">CatBoost Döntési Súlyozás (Feature Importance)</h5>
+                    <h5 class="mb-0 fw-bold">CatBoost Globális Jellemzőfontosság (Feature Importance)</h5>
                 </div>
                 <div class="card-body p-4">
                     <div class="row gy-3">

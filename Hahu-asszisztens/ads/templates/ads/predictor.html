@@ -46,8 +46,8 @@
                     <div id="stats-rf" style="{% if selected_ai == 'random_forest' %}display: block;{% else %}display: none;{% endif %}">
                         <h6 class="text-muted fw-bold mb-2 text-uppercase">Random Forest (v1.4) Aktuális Állapota</h6>
                         <div class="d-flex justify-content-center gap-4 text-secondary flex-wrap">
-                            <span>Pontosság: <b class="text-dark">{{ ai_accuracy_percent|floatformat:2 }} %</b></span>
-                            <span>Átlagos tévedés: <b class="text-dark">~{{ ai_stat.mae|floatformat:0 }} Ft</b></span>
+                            <span>Pontosság (R²): <b class="text-dark">{{ ai_accuracy_percent|floatformat:2 }} %</b></span>
+                            <span>Átlagos hiba (MAE): <b class="text-dark">~{{ ai_stat.mae|floatformat:0 }} Ft</b></span>
                         </div>
                     </div>
 

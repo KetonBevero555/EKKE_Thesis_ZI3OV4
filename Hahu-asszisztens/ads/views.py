@@ -163,12 +163,12 @@ def dashboard(request):
         # Színek és fordítások a megjelenítéshez
         colors = ['primary', 'info', 'warning', 'danger', 'success', 'secondary']
         translations = {
-            'year': 'Évjárat (Year)',
-            'power_le': 'Teljesítmény (LE)',
-            'mileage': 'Futásteljesítmény (Km)',
-            'brand': 'Márka (Brand)',
-            'model': 'Modell (Model)',
-            'fuel': 'Üzemanyag (Fuel)'
+            'year': 'Évjárat (year)',
+            'power_le': 'Teljesítmény (power_le)',
+            'mileage': 'Futásteljesítmény (mileage)',
+            'brand': 'Márka (brand)',
+            'model': 'Modell (model)',
+            'fuel': 'Üzemanyag (fuel)'
         }
         
         # Csak a top 4 értéket küldjük át a dizájn miatt
