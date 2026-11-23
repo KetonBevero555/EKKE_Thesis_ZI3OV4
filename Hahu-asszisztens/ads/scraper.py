@@ -375,5 +375,5 @@ if __name__ == "__main__":
     # Adatbázisban lévő régi hirdetések törlése a scraper futtatásakor
     delete_old_data = False
     # AI modellek újratanítása a scraper futtatása után
-    train_models_after_scrape = False
+    train_models_after_scrape = True
     run_scraper()

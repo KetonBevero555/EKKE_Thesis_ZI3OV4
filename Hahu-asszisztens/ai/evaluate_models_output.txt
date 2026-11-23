@@ -1,0 +1,53 @@
+Loading data from the database...
+Initial record count: 171370
+Cleaned, deduplicated record count: 148962
+
+=== Run 1/10 (random_seed=15) ===
+  [RF] MAE: 764,924 HUF | MAPE: 17.09% | R2: 0.9462
+  [CB] MAE: 744,918 HUF | MAPE: 16.41% | R2: 0.9485
+
+=== Run 2/10 (random_seed=42) ===
+  [RF] MAE: 761,125 HUF | MAPE: 17.24% | R2: 0.9468
+  [CB] MAE: 746,344 HUF | MAPE: 16.40% | R2: 0.9485
+
+=== Run 3/10 (random_seed=100) ===
+  [RF] MAE: 775,263 HUF | MAPE: 17.35% | R2: 0.9453
+  [CB] MAE: 752,959 HUF | MAPE: 16.54% | R2: 0.9483
+
+=== Run 4/10 (random_seed=123) ===
+  [RF] MAE: 767,485 HUF | MAPE: 17.19% | R2: 0.9483
+  [CB] MAE: 741,978 HUF | MAPE: 16.47% | R2: 0.9498
+
+=== Run 5/10 (random_seed=456) ===
+  [RF] MAE: 778,137 HUF | MAPE: 17.29% | R2: 0.9440
+  [CB] MAE: 758,020 HUF | MAPE: 16.46% | R2: 0.9464
+
+=== Run 6/10 (random_seed=777) ===
+  [RF] MAE: 765,315 HUF | MAPE: 17.55% | R2: 0.9459
+  [CB] MAE: 745,117 HUF | MAPE: 16.87% | R2: 0.9463
+
+=== Run 7/10 (random_seed=1337) ===
+  [RF] MAE: 775,304 HUF | MAPE: 17.78% | R2: 0.9423
+  [CB] MAE: 751,771 HUF | MAPE: 16.94% | R2: 0.9445
+
+=== Run 8/10 (random_seed=2020) ===
+  [RF] MAE: 758,681 HUF | MAPE: 16.96% | R2: 0.9501
+  [CB] MAE: 738,909 HUF | MAPE: 16.24% | R2: 0.9511
+
+=== Run 9/10 (random_seed=3773) ===
+  [RF] MAE: 766,596 HUF | MAPE: 16.92% | R2: 0.9422
+  [CB] MAE: 748,973 HUF | MAPE: 16.36% | R2: 0.9453
+
+=== Run 10/10 (random_seed=5555) ===
+  [RF] MAE: 776,865 HUF | MAPE: 16.92% | R2: 0.9427
+  [CB] MAE: 761,512 HUF | MAPE: 16.25% | R2: 0.9446
+
+================ FINAL RESULTS (MEAN ± STD) ================
+Random Forest:
+  MAE:  768,969 ± 6,566 HUF
+  MAPE: 17.23 ± 0.27 %
+  R²:   0.9454 ± 0.0025
+CatBoost:
+  MAE:  749,050 ± 6,717 HUF
+  MAPE: 16.49 ± 0.22 %
+  R²:   0.9473 ± 0.0021

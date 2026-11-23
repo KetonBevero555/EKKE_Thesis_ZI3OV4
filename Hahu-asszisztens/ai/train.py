@@ -140,9 +140,9 @@ def train_model_catboost():
     y_pred_log = model.predict(X_test)
     y_pred = np.expm1(y_pred_log)
     y_test_real = np.expm1(y_test)
-    
+
     global_mae = mean_absolute_error(y_test_real, y_pred)
-    global_r2 = r2_score(y_test, y_pred_log)
+    global_r2 = r2_score(y_test_real, y_pred)
     
     # Statisztikák
     print('Statistics')
@@ -170,7 +170,6 @@ def train_model_catboost():
     model_path = os.path.join(models_dir, 'CB_model.pkl')
     joblib.dump(model, model_path)
     
-    AILog.objects.create(mae=global_mae, r2_score=global_r2)
     print(f"<CBM> Model saved: {model_path}")
 
 def train_models():
